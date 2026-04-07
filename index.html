@@ -598,7 +598,6 @@ function buildLeafletMap(mapId, items, tripName, opts) {
       scrollWheelZoom: !!opts.isModal,
       touchZoom: !!opts.isModal,
       doubleClickZoom: !!opts.isModal,
-      tap: true, // iOS tap fix
     });
 
     if (opts.isModal) leafletModalMap = map;
@@ -606,7 +605,7 @@ function buildLeafletMap(mapId, items, tripName, opts) {
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
-      crossOrigin: true,
+      crossOrigin: '',
     }).addTo(map);
 
     const bounds = [];
@@ -637,6 +636,11 @@ function buildLeafletMap(mapId, items, tripName, opts) {
       if (latlngs.length > 1) {
         L.polyline(latlngs, {color:'#007AFF', weight:2.5, opacity:0.7, dashArray:'6,6'}).addTo(map);
       }
+      // geocode 完成後才綁定 click（此時 markers 已填好）
+      document.querySelectorAll('[data-modal-item]').forEach(el => {
+        el.style.cursor = 'pointer';
+        el.onclick = () => flyToMarker(parseInt(el.dataset.modalItem));
+      });
     }
 
     const pad = opts.isModal ? [30,30] : [15,15];
@@ -1512,11 +1516,7 @@ function bindEvents() {
         if (items.length) initLeafletModal(items, t.name || '');
       }, 100);
 
-      // 點擊景點清單 → 飛到地圖位置
-      document.querySelectorAll('[data-modal-item]').forEach(el => {
-        el.style.cursor = 'pointer';
-        el.onclick = () => flyToMarker(parseInt(el.dataset.modalItem));
-      });
+      // 景點 click 事件在 geocode 完成後由 buildLeafletMap 內部綁定
     };
   }
 
