@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="行程規劃" />
+  <meta name="theme-color" content="#1A1A1A" />
+  <title>旅遊行程規劃</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    :root {
+      --bg:#F7F7F7; --surface:#FFF; --border:#EBEBEB; --border2:#E0E0E0;
+      --text:#1A1A1A; --text2:#666; --text3:#AAA; --tag-bg:#F2F2F2;
+      --r-lg:18px; --r-md:12px; --r-sm:8px;
+      --accent:#1A1A1A; --red:#E74C3C; --green:#27AE60;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+    body { font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; max-width:430px; margin:0 auto; }
+
+    /* LOADING */
+    .loading { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; gap:14px; }
+    .spinner { width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--text); border-radius:50%; animation:spin 0.8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .loading-text { font-size:14px; color:var(--text2); font-weight:500; }
+
+    /* JOIN */
+    .join-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:32px 24px; text-align:center; }
+    .join-logo { font-size:48px; margin-bottom:16px; }
+    .join-title { font-size:22px; font-weight:700; letter-spacing:-0.5px; margin-bottom:6px; }
+    .join-sub { font-size:13px; color:var(--text2); margin-bottom:28px; line-height:1.6; white-space:pre-line; }
+    .join-card { width:100%; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:20px; }
+    .join-card-title { font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:10px; }
+    .join-inp { width:100%; background:var(--bg); border:1px solid var(--border2); border-radius:var(--r-md); padding:12px 14px; font-size:14px; font-weight:500; color:var(--text); font-family:inherit; outline:none; margin-bottom:10px; }
+    .join-inp:focus { border-color:var(--text); background:white; }
+    .join-btn { width:100%; background:var(--text); color:white; border:none; border-radius:var(--r-md); padding:13px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; }
+    .join-error { font-size:12px; color:var(--red); margin-top:6px; display:none; }
+
+    /* HOME */
+    .home-header { background:var(--surface); border-bottom:1px solid var(--border); padding:18px 20px 14px; position:sticky; top:0; z-index:100; }
+    .home-title-row { display:flex; align-items:center; justify-content:space-between; }
+    .home-title { font-size:20px; font-weight:700; letter-spacing:-0.4px; }
+    .home-nick { font-size:11px; color:var(--text3); margin-top:2px; }
+    .new-trip-btn { border:1px solid var(--border2); background:var(--surface); border-radius:var(--r-sm); padding:7px 12px; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; font-family:inherit; }
+    .trips-list { padding:14px 16px 100px; }
+    .trip-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px 18px 12px; margin-bottom:10px; cursor:pointer; animation:fadeUp 0.2s ease; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .tc-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:5px; }
+    .tc-name { font-size:15px; font-weight:700; }
+    .tc-del { width:26px; height:26px; border-radius:6px; border:1px solid var(--border); background:var(--surface); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--text3); }
+    .tc-dates { font-size:12px; color:var(--text2); margin-bottom:8px; }
+    .tc-stats { display:flex; gap:14px; }
+    .tc-stat { font-size:11px; color:var(--text3); }
+    .tc-stat span { font-weight:600; color:var(--text2); }
+    .tc-footer { display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+    .tc-open { font-size:12px; font-weight:600; color:var(--text); }
+    .tc-invite { border:1px solid var(--border2); background:var(--surface); border-radius:var(--r-sm); padding:5px 10px; font-size:11px; font-weight:600; color:var(--text2); cursor:pointer; font-family:inherit; }
+    .empty-trips { text-align:center; padding:64px 24px; }
+    .empty-trips .ei { font-size:44px; margin-bottom:14px; opacity:0.2; }
+    .empty-trips .et { font-size:15px; font-weight:600; color:var(--text2); margin-bottom:4px; }
+    .empty-trips .es { font-size:12px; color:var(--text3); }
+    .fab-new { position:fixed; bottom:28px; left:50%; transform:translateX(-50%); width:calc(100% - 80px); max-width:240px; height:50px; background:var(--text); color:white; border:none; border-radius:50px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; box-shadow:0 4px 20px rgba(0,0,0,0.2); z-index:200; display:flex; align-items:center; justify-content:center; gap:8px; }
+
+    /* TRIP */
+    .trip-header { background:var(--surface); border-bottom:1px solid var(--border); padding:14px 20px 0; position:sticky; top:0; z-index:100; }
+    .th-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .th-back { border:none; background:none; font-size:13px; font-weight:600; color:var(--text2); cursor:pointer; font-family:inherit; padding:0; }
+    .th-actions { display:flex; gap:8px; }
+    .th-btn { border:1px solid var(--border2); background:var(--surface); border-radius:var(--r-sm); padding:7px 11px; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; font-family:inherit; }
+    .th-btn.active { background:var(--text); border-color:var(--text); color:white; }
+    .th-name { font-size:19px; font-weight:700; letter-spacing:-0.4px; margin-bottom:2px; }
+    .th-meta { font-size:11px; color:var(--text3); margin-bottom:12px; }
+    .budget-strip { display:flex; align-items:center; gap:14px; padding:10px 0; border-top:1px solid var(--border); }
+    .b-nums { display:flex; align-items:baseline; gap:4px; flex-shrink:0; }
+    .b-spent { font-size:15px; font-weight:700; }
+    .b-sep,.b-total { font-size:12px; color:var(--text3); }
+    .b-wrap { flex:1; }
+    .b-pct { font-size:10px; color:var(--text3); font-weight:600; text-align:right; margin-bottom:4px; }
+    .b-track { height:3px; background:var(--border); border-radius:2px; overflow:hidden; }
+    .b-fill { height:100%; background:var(--text); border-radius:2px; transition:width 0.4s; }
+    .b-fill.over { background:var(--red); }
+
+    /* TAB BAR (行程/記帳) */
+    .tab-bar { display:flex; border-top:1px solid var(--border); }
+    .tab-bar-btn { flex:1; padding:10px 0 12px; font-size:13px; font-weight:600; color:var(--text3); background:none; border:none; cursor:pointer; font-family:inherit; border-top:2px solid transparent; transition:all 0.15s; }
+    .tab-bar-btn.active { color:var(--text); border-top-color:var(--text); }
+
+    /* DAY ROW */
+    .day-row { display:flex; gap:6px; padding:10px 0; overflow-x:auto; scrollbar-width:none; }
+    .day-row::-webkit-scrollbar { display:none; }
+    .day-tab { flex-shrink:0; border:1px solid var(--border2); background:var(--surface); border-radius:var(--r-sm); padding:6px 14px; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; font-family:inherit; }
+    .day-tab.active { background:var(--text); border-color:var(--text); color:white; }
+    .day-add-tab { flex-shrink:0; border:1px dashed var(--border2); background:none; border-radius:var(--r-sm); padding:6px 12px; font-size:12px; color:var(--text3); cursor:pointer; font-family:inherit; }
+    .trip-content { padding:14px 16px 100px; }
+    .stats-row { display:flex; gap:10px; margin-bottom:18px; }
+    .stat-box { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); padding:12px 14px; }
+    .stat-v { font-size:16px; font-weight:700; }
+    .stat-l { font-size:10px; color:var(--text3); margin-top:2px; text-transform:uppercase; letter-spacing:0.3px; }
+    .section-lbl { font-size:10px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:var(--text3); margin-bottom:12px; }
+    .tl-item { display:flex; gap:14px; margin-bottom:10px; animation:fadeUp 0.2s ease; }
+    .tl-left { display:flex; flex-direction:column; align-items:center; min-width:42px; padding-top:3px; }
+    .tl-time { font-size:11px; font-weight:600; color:var(--text3); white-space:nowrap; }
+    .tl-dot { width:6px; height:6px; border-radius:50%; background:var(--border2); margin:5px 0; flex-shrink:0; }
+    .tl-line { flex:1; width:1px; background:var(--border); min-height:14px; }
+    .item-card { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:13px 15px; min-width:0; }
+    .card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:4px; }
+    .card-name { font-size:14px; font-weight:600; line-height:1.35; flex:1; }
+    .type-tag { font-size:10px; font-weight:600; padding:3px 8px; border-radius:4px; background:var(--tag-bg); color:var(--text2); flex-shrink:0; border:1px solid var(--border); }
+    .card-desc { font-size:12px; color:var(--text2); line-height:1.6; margin-bottom:10px; white-space:pre-wrap; }
+    .card-footer { display:flex; align-items:center; justify-content:space-between; }
+    .cost-lbl { font-size:13px; font-weight:600; color:var(--text2); }
+    .cost-lbl.free { color:var(--text3); font-weight:500; }
+    .actions { display:flex; gap:6px; }
+    .act-btn { width:28px; height:28px; border-radius:var(--r-sm); border:1px solid var(--border); background:var(--surface); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:13px; }
+    .empty { text-align:center; padding:56px 20px; }
+    .empty-icon { font-size:40px; margin-bottom:14px; opacity:0.25; }
+    .empty-t { font-size:14px; font-weight:600; color:var(--text2); margin-bottom:4px; }
+    .empty-s { font-size:12px; color:var(--text3); }
+    .fab { position:fixed; bottom:28px; left:50%; transform:translateX(-50%); width:calc(100% - 80px); max-width:220px; height:50px; background:var(--text); color:white; border:none; border-radius:50px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; box-shadow:0 4px 20px rgba(0,0,0,0.2); z-index:200; display:flex; align-items:center; justify-content:center; gap:8px; }
+
+    /* ── 記帳頁面 ── */
+    .ledger-content { padding:14px 16px 100px; }
+
+    /* 幣別切換 */
+    .currency-strip { display:flex; align-items:center; gap:10px; margin-bottom:16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); padding:10px 14px; }
+    .currency-label { font-size:11px; color:var(--text3); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; flex-shrink:0; }
+    .cur-select { background:var(--bg); border:1px solid var(--border2); border-radius:var(--r-sm); padding:7px 10px; font-size:13px; font-weight:700; color:var(--text); font-family:inherit; outline:none; cursor:pointer; appearance:none; min-width:110px; }
+    .rate-inp { width:90px; background:var(--bg); border:1px solid var(--border2); border-radius:6px; padding:5px 8px; font-size:12px; font-weight:600; color:var(--text); font-family:inherit; outline:none; text-align:right; }
+    .rate-inp:focus { border-color:var(--text); background:white; }
+    .rate-label { font-size:11px; color:var(--text3); white-space:nowrap; }
+
+    /* 記帳總覽 */
+    .ledger-summary { display:flex; gap:10px; margin-bottom:18px; }
+    .ls-box { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); padding:12px 14px; }
+    .ls-v { font-size:15px; font-weight:700; }
+    .ls-v2 { font-size:11px; color:var(--text3); margin-top:1px; }
+    .ls-l { font-size:10px; color:var(--text3); margin-top:3px; text-transform:uppercase; letter-spacing:0.3px; }
+
+    /* 記帳項目卡片 */
+    .ledger-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:14px 16px; margin-bottom:10px; animation:fadeUp 0.2s ease; }
+    .lc-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:8px; }
+    .lc-name { font-size:14px; font-weight:600; flex:1; }
+    .lc-amount { font-size:16px; font-weight:700; color:var(--text); white-space:nowrap; }
+    .lc-amount-twd { font-size:11px; color:var(--text3); text-align:right; margin-top:1px; }
+    .lc-tags { display:flex; gap:6px; flex-wrap:wrap; }
+    .lc-tag { font-size:11px; font-weight:600; padding:3px 8px; border-radius:5px; background:var(--tag-bg); color:var(--text2); border:1px solid var(--border); }
+    .lc-tag.payer { background:#E8F4FD; border-color:#BDE0F7; color:#2980B9; }
+    .lc-split-detail { font-size:11px; color:var(--text3); margin-top:4px; }
+    .lc-footer { display:flex; justify-content:flex-end; gap:6px; margin-top:10px; padding-top:8px; border-top:1px solid var(--border); }
+
+    /* 分攤結算 */
+    .settle-section { margin-top:20px; }
+    .settle-title { font-size:10px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:var(--text3); margin-bottom:12px; }
+    .settle-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; margin-bottom:10px; }
+    .settle-person-row { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border); }
+    .settle-person-row:last-child { border-bottom:none; }
+    .sp-name { font-size:13px; font-weight:700; }
+    .sp-paid { font-size:11px; color:var(--text3); }
+    .sp-balance { font-size:14px; font-weight:700; }
+    .sp-balance.owe { color:var(--red); }
+    .sp-balance.get { color:var(--green); }
+    .sp-balance.even { color:var(--text3); }
+    .settle-arrow-row { background:var(--bg); border-radius:var(--r-md); padding:10px 14px; margin-bottom:8px; display:flex; align-items:center; gap:8px; font-size:13px; }
+    .sa-from { font-weight:700; color:var(--red); }
+    .sa-to { font-weight:700; color:var(--green); }
+    .sa-amount { font-size:13px; font-weight:700; margin-left:auto; }
+
+    /* 快速輸入列 */
+    .quick-add-bar { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:430px; background:var(--surface); border-top:1px solid var(--border); padding:10px 16px 28px; z-index:200; }
+    .qa-row1 { display:flex; gap:8px; margin-bottom:8px; }
+    .qa-inp { flex:1; background:var(--bg); border:1px solid var(--border2); border-radius:var(--r-sm); padding:10px 12px; font-size:14px; font-weight:500; color:var(--text); font-family:inherit; outline:none; }
+    .qa-inp:focus { border-color:var(--text); background:white; }
+    .qa-amount { width:110px; }
+    .qa-row2 { display:flex; gap:8px; align-items:center; }
+    .qa-payer { flex:1; background:var(--bg); border:1px solid var(--border2); border-radius:var(--r-sm); padding:10px 12px; font-size:13px; font-weight:600; color:var(--text); font-family:inherit; outline:none; appearance:none; cursor:pointer; }
+    .qa-split-btn { border:1px solid var(--border2); background:var(--bg); border-radius:var(--r-sm); padding:9px 12px; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .qa-submit { background:var(--text); color:white; border:none; border-radius:var(--r-sm); padding:10px 18px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+
+    /* MODAL */
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.3); z-index:300; display:flex; align-items:flex-end; }
+    .modal { background:var(--surface); border-radius:24px 24px 0 0; width:100%; max-width:430px; margin:0 auto; padding:6px 20px 48px; animation:slideUp 0.3s cubic-bezier(0.32,0.72,0,1); max-height:88vh; overflow-y:auto; }
+    @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    .m-handle { width:36px; height:4px; background:var(--border2); border-radius:2px; margin:10px auto 20px; }
+    .m-title { font-size:17px; font-weight:700; margin-bottom:20px; }
+    .f-group { margin-bottom:16px; }
+    .f-lbl { font-size:11px; font-weight:600; color:var(--text3); letter-spacing:0.8px; text-transform:uppercase; display:block; margin-bottom:7px; }
+    .f-inp, .f-ta, .f-sel { width:100%; background:var(--bg); border:1px solid var(--border2); border-radius:var(--r-md); padding:11px 14px; font-size:14px; font-weight:500; color:var(--text); font-family:inherit; outline:none; }
+    .f-inp:focus, .f-ta:focus, .f-sel:focus { border-color:var(--text); background:white; }
+    .f-ta { resize:none; height:68px; line-height:1.6; }
+    .f-sel { appearance:none; cursor:pointer; }
+    .f-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .t-chips { display:flex; gap:6px; flex-wrap:wrap; }
+    .t-chip { border:1px solid var(--border2); background:var(--surface); border-radius:var(--r-sm); padding:6px 12px; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; font-family:inherit; }
+    .t-chip.on { background:var(--text); border-color:var(--text); color:white; }
+    .btn-save { width:100%; background:var(--text); color:white; border:none; border-radius:var(--r-md); padding:14px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; margin-top:6px; }
+    .btn-cancel { width:100%; background:var(--bg); color:var(--text2); border:1px solid var(--border2); border-radius:var(--r-md); padding:13px; font-size:14px; font-weight:500; cursor:pointer; font-family:inherit; margin-top:8px; }
+    .btn-danger { width:100%; background:white; color:var(--red); border:1px solid #fcc; border-radius:var(--r-md); padding:13px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; margin-top:8px; }
+
+    /* 分攤 Modal */
+    .split-member-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+    .split-member-row:last-child { border-bottom:none; }
+    .sm-check { width:20px; height:20px; accent-color:var(--text); cursor:pointer; flex-shrink:0; }
+    .sm-name { font-size:14px; font-weight:600; flex:1; }
+    .sm-amt { width:90px; background:var(--bg); border:1px solid var(--border2); border-radius:6px; padding:7px 10px; font-size:13px; font-weight:600; color:var(--text); font-family:inherit; outline:none; text-align:right; }
+    .sm-amt:focus { border-color:var(--text); background:white; }
+    .sm-amt:disabled { opacity:0.4; }
+    .split-total-row { display:flex; justify-content:space-between; align-items:center; padding:12px 0 0; margin-top:4px; }
+    .split-total-lbl { font-size:13px; color:var(--text3); }
+    .split-total-val { font-size:15px; font-weight:700; }
+    .split-total-val.ok { color:var(--green); }
+    .split-total-val.err { color:var(--red); }
+    .split-mode-row { display:flex; gap:8px; margin-bottom:14px; }
+    .split-mode-btn { flex:1; padding:8px 0; font-size:12px; font-weight:700; border:1px solid var(--border2); border-radius:var(--r-sm); background:var(--bg); color:var(--text2); cursor:pointer; font-family:inherit; }
+    .split-mode-btn.on { background:var(--text); border-color:var(--text); color:white; }
+
+    /* ── 地圖縮圖 ── */
+    .map-thumb { margin:0 0 0 0; border-bottom:1px solid var(--border); position:relative; height:80px; overflow:hidden; background:#e9f0e6; cursor:pointer; }
+    .map-thumb iframe { width:100%; height:220px; border:none; pointer-events:none; transform:translateY(-50px); }
+    .map-thumb-overlay { position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:flex-end; padding:8px 10px; background:linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.18) 100%); }
+    .map-thumb-btn { background:white; border:none; border-radius:20px; padding:5px 12px; font-size:11px; font-weight:700; color:#1a1a1a; cursor:pointer; box-shadow:0 1px 6px rgba(0,0,0,0.18); display:flex; align-items:center; gap:4px; }
+
+    /* ── 全屏地圖 Modal ── */
+    .map-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:500; display:flex; flex-direction:column; }
+    .map-modal { background:white; flex:1; display:flex; flex-direction:column; animation:slideUp 0.3s cubic-bezier(0.32,0.72,0,1); }
+    .map-modal-header { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border); background:white; flex-shrink:0; }
+    .map-modal-title { font-size:15px; font-weight:700; }
+    .map-modal-close { border:none; background:none; font-size:20px; cursor:pointer; color:var(--text2); padding:0; line-height:1; }
+    .map-modal-iframe { flex:1; border:none; width:100%; }
+    .map-modal-list { flex-shrink:0; max-height:220px; overflow-y:auto; border-top:1px solid var(--border); background:white; }
+    .map-modal-item { display:flex; align-items:center; gap:10px; padding:10px 18px; border-bottom:1px solid var(--border); }
+    .map-modal-item:last-child { border-bottom:none; }
+    .mmi-num { width:24px; height:24px; border-radius:50%; background:var(--text); color:white; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; border:2px solid white; box-shadow:0 1px 4px rgba(0,0,0,0.2); }
+    .mmi-name { font-size:13px; font-weight:600; flex:1; }
+    .mmi-time { font-size:11px; color:var(--text3); }
+    .mmi-nav { border:1px solid var(--border2); background:var(--bg); border-radius:6px; padding:4px 9px; font-size:11px; font-weight:600; color:var(--text2); cursor:pointer; text-decoration:none; white-space:nowrap; }
+    /* 交通查詢選點圓圈 */
+    .item-select-circle { width:22px; height:22px; border-radius:50%; border:2px solid #ddd; background:white; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; cursor:pointer; flex-shrink:0; transition:all 0.15s; }
+    .item-select-circle.sel-a { background:#FF3B30; border-color:#FF3B30; color:white; }
+    .item-select-circle.sel-b { background:#34C759; border-color:#34C759; color:white; }
+
+    /* ── 景點詳情 Modal ── */
+    .detail-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:600; display:flex; align-items:flex-end; }
+    .detail-sheet { background:white; width:100%; max-height:90vh; border-radius:22px 22px 0 0; overflow-y:auto; animation:slideUp 0.3s cubic-bezier(0.32,0.72,0,1); position:relative; }
+    .detail-photo-wrap { position:relative; height:200px; background:#ccc; overflow:hidden; }
+    .detail-photo-wrap img { width:100%; height:100%; object-fit:cover; }
+    .detail-photo-gradient { position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 55%); }
+    .detail-photo-title { position:absolute; bottom:14px; left:16px; right:48px; color:white; font-size:18px; font-weight:800; text-shadow:0 1px 6px rgba(0,0,0,0.5); line-height:1.3; }
+    .detail-close-btn { position:absolute; top:12px; right:12px; width:30px; height:30px; border-radius:50%; background:rgba(0,0,0,0.4); border:none; color:white; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .detail-photo-source { position:absolute; top:12px; left:12px; background:rgba(0,0,0,0.4); color:white; font-size:9px; padding:2px 7px; border-radius:8px; }
+    .detail-body { padding:16px; }
+    .detail-tags { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+    .detail-tag { background:#f0f0f0; color:#555; font-size:10px; font-weight:600; padding:3px 9px; border-radius:10px; }
+    .detail-tag.blue { background:#e8f4ff; color:#007AFF; }
+    .detail-desc { font-size:13px; color:#444; line-height:1.7; margin-bottom:14px; }
+    .detail-info-row { display:flex; gap:8px; margin-bottom:14px; }
+    .detail-info-box { flex:1; background:#f8f8f8; border-radius:10px; padding:8px; text-align:center; }
+    .detail-info-label { font-size:9px; color:#888; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; }
+    .detail-info-value { font-size:12px; font-weight:700; color:#1a1a1a; margin-top:2px; }
+    .detail-actions { display:flex; gap:8px; padding-bottom:4px; }
+    .detail-act { flex:1; padding:11px; border-radius:10px; font-size:12px; font-weight:700; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; font-family:inherit; }
+    .detail-act.primary { background:#1a1a1a; color:white; }
+    .detail-act.secondary { background:#f0f0f0; color:#333; }
+    .detail-loading { display:flex; flex-direction:column; align-items:center; padding:30px; gap:10px; color:#888; font-size:13px; }
+    .detail-photo-placeholder { height:200px; background:linear-gradient(135deg,#667eea,#764ba2); display:flex; align-items:center; justify-content:center; font-size:64px; position:relative; }
+
+    /* SHARE MODAL */
+    .share-box { background:var(--bg); border:1px solid var(--border); border-radius:var(--r-md); padding:16px; margin-bottom:14px; }
+    .share-box-title { font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:10px; }
+    .share-link-row { display:flex; gap:8px; align-items:stretch; }
+    .share-url-text { flex:1; font-size:12px; color:var(--text2); background:white; border:1px solid var(--border2); border-radius:var(--r-sm); padding:9px 12px; word-break:break-all; line-height:1.5; }
+    .copy-btn { flex-shrink:0; border:1px solid var(--border2); background:white; border-radius:var(--r-sm); padding:9px 12px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .share-desc { font-size:12px; color:var(--text2); line-height:1.6; margin-top:10px; }
+    .line-btn { width:100%; background:#06C755; color:white; border:none; border-radius:var(--r-md); padding:13px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; margin-bottom:8px; }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+'use strict';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBdzNMLeoJRjYseVhAoe-KlupU81-MfvFc",
+  authDomain: "travel-plan-app-49cd2.firebaseapp.com",
+  databaseURL: "https://travel-plan-app-49cd2-default-rtdb.firebaseio.com",
+  projectId: "travel-plan-app-49cd2",
+  storageBucket: "travel-plan-app-49cd2.firebasestorage.app",
+  messagingSenderId: "69916093128",
+  appId: "1:69916093128:web:64683df3301917796a93fd"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const TYPES = [
+  {key:'sight',    emoji:'🏛', label:'景點'},
+  {key:'food',     emoji:'🍜', label:'餐飲'},
+  {key:'hotel',    emoji:'🏨', label:'住宿'},
+  {key:'transport',emoji:'🚄', label:'交通'},
+  {key:'shop',     emoji:'🛍', label:'購物'},
+  {key:'other',    emoji:'📌', label:'其他'},
+];
+
+// ── 全域狀態 ──
+let screen     = 'loading';
+let tripTab    = 'itinerary'; // 'itinerary' | 'ledger'
+let nickname   = localStorage.getItem('travel_nickname') || '';
+let trips      = {};
+let curTripId  = null;
+let joinTripId = null;
+let modal      = null;
+let editKey    = null;
+let shareUrl   = '';
+let dbListener = null;
+
+// 記帳狀態
+let ledgerCurrency = localStorage.getItem('ledger_currency') || 'JPY';
+const CURRENCIES = [
+  { code:'JPY', sym:'¥',   name:'日圓',     defaultRate: 0.22  },
+  { code:'EUR', sym:'€',   name:'歐元',     defaultRate: 34    },
+  { code:'USD', sym:'$',   name:'美元',     defaultRate: 32    },
+  { code:'KRW', sym:'₩',   name:'韓元',     defaultRate: 0.024 },
+  { code:'HKD', sym:'HK$', name:'港幣',     defaultRate: 4.1   },
+  { code:'GBP', sym:'£',   name:'英鎊',     defaultRate: 41    },
+  { code:'THB', sym:'฿',   name:'泰銖',     defaultRate: 0.9   },
+  { code:'SGD', sym:'S$',  name:'新幣',     defaultRate: 24    },
+  { code:'AUD', sym:'A$',  name:'澳幣',     defaultRate: 21    },
+  { code:'TWD', sym:'NT$', name:'台幣',     defaultRate: 1     },
+];
+let ledgerRates = Object.fromEntries(
+  CURRENCIES.map(c => [c.code, Number(localStorage.getItem('rate_'+c.code)) || c.defaultRate])
+);
+let splitModal     = { open:false, mode:'equal', members:{}, customAmts:{}, totalAmt:0, payer:'', name:'' };
+
+// 表單暫存
+let F  = {time:'09:00', name:'', type:'sight', desc:'', cost:'', mapUrl:''};
+let TF = {name:'', dates:'', budget:'', dayCount:'3'};
+let LF = {name:'', amount:'', payer:''};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmt = n => Number(n||0).toLocaleString();
+
+function getItems(trip, day) {
+  return Object.entries(trip.items || {})
+    .filter(([, v]) => v.day === day)
+    .sort(([, a], [, b]) => a.time.localeCompare(b.time))
+    .map(([k, v]) => ({...v, _key: k}));
+}
+function getTotalSpent(trip) {
+  return Object.values(trip.items || {}).reduce((a, v) => a + (Number(v.cost)||0), 0);
+}
+function getDaySpent(trip, day) {
+  return Object.values(trip.items || {}).filter(v => v.day === day).reduce((a, v) => a + (Number(v.cost)||0), 0);
+}
+function getBudgetPct(trip) {
+  return trip.budget ? Math.min(100, Math.round(getTotalSpent(trip) / trip.budget * 100)) : 0;
+}
+
+// ── 即時匯率 ──
+let ratesLastUpdated = null;
+
+async function fetchLiveRates() {
+  try {
+    // open.er-api.com — 免費，支援 CORS，以 TWD 為基準
+    const res = await fetch('https://open.er-api.com/v6/latest/TWD');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data.result !== 'success') throw new Error('API error');
+    // data.rates 是 1 TWD = X 外幣，反轉成 1外幣 = Y TWD
+    CURRENCIES.forEach(c => {
+      if (c.code === 'TWD') return;
+      const rate = data.rates[c.code];
+      if (rate && rate > 0) {
+        ledgerRates[c.code] = Math.round((1 / rate) * 10000) / 10000;
+        localStorage.setItem('rate_' + c.code, ledgerRates[c.code]);
+      }
+    });
+    ratesLastUpdated = new Date().toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'});
+    localStorage.setItem('rates_updated', ratesLastUpdated);
+    render();
+  } catch(e) {
+    console.log('匯率更新失敗:', e);
+  }
+}
+
+// ── 記帳計算 ──
+function getLedgerEntries(trip) {
+  return Object.entries(trip.ledger || {})
+    .sort(([, a], [, b]) => (b.createdAt||0) - (a.createdAt||0))
+    .map(([k, v]) => ({...v, _key: k}));
+}
+
+function getLedgerTotal(trip) {
+  return Object.values(trip.ledger || {}).reduce((a, v) => a + (Number(v.amount)||0), 0);
+}
+
+function toTWD(amount) {
+  const rate = ledgerRates[ledgerCurrency] || 1;
+  return Math.round(amount * rate);
+}
+
+function getCurSym(code) {
+  const c = CURRENCIES.find(x => x.code === (code || ledgerCurrency));
+  return c ? c.sym : '';
+}
+
+function fmtCurrency(amount) {
+  return getCurSym() + fmt(amount);
+}
+
+// 計算每個人的淨收支
+function calcBalances(trip) {
+  const members = Object.keys(trip.members || {});
+  const paid   = {};  // 每個人付了多少
+  const share  = {};  // 每個人應承擔多少
+  members.forEach(m => { paid[m] = 0; share[m] = 0; });
+
+  Object.values(trip.ledger || {}).forEach(entry => {
+    const amt = Number(entry.amount) || 0;
+    const payer = entry.payer;
+    if (payer && paid[payer] !== undefined) paid[payer] += amt;
+
+    // 分攤
+    if (entry.splits) {
+      Object.entries(entry.splits).forEach(([m, a]) => {
+        if (share[m] !== undefined) share[m] += Number(a) || 0;
+      });
+    } else {
+      // 預設平均分給所有成員
+      const n = members.length;
+      if (n > 0) members.forEach(m => { share[m] += amt / n; });
+    }
+  });
+
+  const balances = {};
+  members.forEach(m => { balances[m] = (paid[m] || 0) - (share[m] || 0); });
+  return { paid, share, balances };
+}
+
+// 計算誰該還誰多少（貪心算法）
+function calcSettlements(balances) {
+  const creditors = [], debtors = [];
+  Object.entries(balances).forEach(([name, bal]) => {
+    if (bal > 0.5)  creditors.push({name, amt: bal});
+    if (bal < -0.5) debtors.push({name, amt: -bal});
+  });
+  creditors.sort((a, b) => b.amt - a.amt);
+  debtors.sort((a, b) => b.amt - a.amt);
+
+  const txns = [];
+  let i = 0, j = 0;
+  while (i < creditors.length && j < debtors.length) {
+    const give = Math.min(creditors[i].amt, debtors[j].amt);
+    if (give > 0.5) txns.push({from: debtors[j].name, to: creditors[i].name, amt: give});
+    creditors[i].amt -= give;
+    debtors[j].amt   -= give;
+    if (creditors[i].amt < 0.5) i++;
+    if (debtors[j].amt  < 0.5) j++;
+  }
+  return txns;
+}
+
+// ── 初始化 ──
+function init() {
+  ratesLastUpdated = localStorage.getItem('rates_updated') || null;
+  // 每次啟動自動更新匯率（背景執行，不阻塞）
+  fetchLiveRates();
+  const params = new URLSearchParams(location.search);
+  const invite = params.get('join');
+  if (invite) {
+    joinTripId = invite;
+    if (!nickname) { screen = 'join'; render(); }
+    else doJoinTrip(invite);
+  } else {
+    if (!nickname) { screen = 'join'; render(); }
+    else startListening();
+  }
+}
+
+function startListening() {
+  screen = 'loading'; render();
+  if (dbListener) db.ref('trips').off('value', dbListener);
+  dbListener = db.ref('trips').on('value', snap => {
+    const all = snap.val() || {};
+    trips = {};
+    Object.entries(all).forEach(([id, t]) => {
+      if (t.members && t.members[nickname]) trips[id] = t;
+    });
+    if (screen === 'loading') screen = 'home';
+    render();
+  });
+}
+
+function doJoinTrip(tripId) {
+  screen = 'loading'; render();
+  db.ref('trips/' + tripId).once('value').then(snap => {
+    if (!snap.exists()) { alert('找不到這個行程，連結可能已失效'); screen = 'home'; startListening(); return; }
+    db.ref('trips/' + tripId + '/members/' + nickname).set(true).then(() => {
+      joinTripId = null;
+      history.replaceState({}, '', location.pathname);
+      startListening();
+    });
+  });
+}
+
+// ── 渲染 ──
+function render() {
+  $('app').innerHTML = buildMain() + (modal ? buildModal() : '');
+  bindEvents();
+}
+
+function buildMain() {
+  if (screen === 'loading') return `<div class="loading"><div class="spinner"></div><div class="loading-text">載入中…</div></div>`;
+  if (screen === 'join')    return buildJoin();
+  if (screen === 'home')    return buildHome();
+  if (screen === 'trip')    return buildTrip();
+  return '';
+}
+
+function buildJoin() {
+  const isInvite = !!joinTripId;
+  return `
+  <div class="join-screen">
+    <div class="join-logo">✈️</div>
+    <div class="join-title">${isInvite ? '加入旅遊行程' : '旅遊行程規劃'}</div>
+    <div class="join-sub">${isInvite ? '朋友邀請你一起規劃旅程！\n輸入暱稱來加入 😊' : '輸入暱稱開始使用'}</div>
+    <div class="join-card">
+      <div class="join-card-title">你的暱稱</div>
+      <input class="join-inp" id="nickInput" type="text" placeholder="例：小涵、Amber…" maxlength="20" autofocus />
+      <div class="join-error" id="joinErr">請輸入暱稱！</div>
+      <button class="join-btn" id="joinBtn">${isInvite ? '加入行程 →' : '開始使用 →'}</button>
+    </div>
+  </div>`;
+}
+
+function buildHome() {
+  const list = Object.entries(trips);
+  return `
+  <div>
+    <div class="home-header">
+      <div class="home-title-row">
+        <div>
+          <div class="home-title">我的行程</div>
+          <div class="home-nick">👤 ${esc(nickname)}</div>
+        </div>
+        <button class="new-trip-btn" id="btnNewTrip">＋ 新計畫</button>
+      </div>
+    </div>
+    <div class="trips-list">
+      ${list.length === 0
+        ? `<div class="empty-trips"><div class="ei">✈</div><div class="et">還沒有旅遊計畫</div><div class="es">點下方按鈕建立第一個行程！</div></div>`
+        : list.map(([id, t]) => buildTripCard(id, t)).join('')}
+    </div>
+    <button class="fab-new" id="btnFabNew">＋&nbsp;&nbsp;新增旅遊計畫</button>
+  </div>`;
+}
+
+function buildTripCard(id, t) {
+  const members = Object.keys(t.members || {});
+  const ledgerCount = Object.keys(t.ledger || {}).length;
+  return `
+  <div class="trip-card" data-open="${id}">
+    <div class="tc-top">
+      <div class="tc-name">${esc(t.name)}</div>
+      <button class="tc-del" data-del="${id}">✕</button>
+    </div>
+    ${t.dates ? `<div class="tc-dates">📅 ${esc(t.dates)}</div>` : ''}
+    <div class="tc-stats">
+      <div class="tc-stat"><span>${(t.days||[]).length}</span> 天</div>
+      <div class="tc-stat"><span>${Object.keys(t.items||{}).length}</span> 行程</div>
+      <div class="tc-stat"><span>${ledgerCount}</span> 筆帳</div>
+      <div class="tc-stat">成員 <span>${members.join('、')}</span></div>
+    </div>
+    <div class="tc-footer">
+      <div class="tc-open">開啟行程 →</div>
+      <button class="tc-invite" data-invite="${id}">🔗 邀請朋友</button>
+    </div>
+  </div>`;
+}
+
+function buildTrip() {
+  const t = trips[curTripId];
+  if (!t) { screen = 'home'; return buildHome(); }
+  const spent   = getTotalSpent(t);
+  const pct     = getBudgetPct(t);
+  const over    = spent > t.budget;
+  const members = Object.keys(t.members || {}).join('、');
+
+  return `
+  <div>
+    <div class="trip-header">
+      <div class="th-top">
+        <button class="th-back" id="btnBack">← 所有行程</button>
+        <div class="th-actions">
+          <button class="th-btn" id="btnEditTrip">✎ 編輯</button>
+          <button class="th-btn" id="btnInvite">🔗 邀請</button>
+        </div>
+      </div>
+      <div class="th-name">${esc(t.name)}</div>
+      <div class="th-meta">👥 ${esc(members)}${t.dates ? '　📅 ' + esc(t.dates) : ''}</div>
+      <div class="budget-strip">
+        <div class="b-nums">
+          <span class="b-spent">NT$${fmt(spent)}</span>
+          <span class="b-sep"> / </span>
+          <span class="b-total">NT$${fmt(t.budget)}</span>
+        </div>
+        <div class="b-wrap">
+          <div class="b-pct">${pct}%</div>
+          <div class="b-track"><div class="b-fill${over?' over':''}" style="width:${pct}%"></div></div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <button class="tab-bar-btn${tripTab==='itinerary'?' active':''}" id="tabItinerary">📅 行程</button>
+        <button class="tab-bar-btn${tripTab==='ledger'?' active':''}" id="tabLedger">💰 記帳</button>
+      </div>
+      ${tripTab === 'itinerary' ? `
+      <div class="day-row">
+        ${(t.days||[]).map((d, i) => `
+          <button class="day-tab${(t.currentDay||0)===i?' active':''}" data-day="${i}">${esc(d.label)}</button>
+        `).join('')}
+        <button class="day-add-tab" id="btnAddDay">＋ 新增日</button>
+      </div>
+      ${buildMapThumb(t)}` : ''}
+    </div>
+    ${tripTab === 'itinerary' ? buildItineraryTab(t) : buildLedgerTab(t)}
+  </div>`;
+}
+
+// ── 類型對應顏色（數字=順序，顏色=類型）──
+const TYPE_PIN_COLORS = {
+  sight:     '#007AFF',  // 景點 藍
+  food:      '#FF6B35',  // 餐飲 橘紅
+  hotel:     '#AF52DE',  // 住宿 紫
+  transport: '#8E8E93',  // 交通 灰
+  shop:      '#FF2D55',  // 購物 粉
+  other:     '#34C759',  // 其他 綠
+};
+function pinColor(type) { return TYPE_PIN_COLORS[type] || '#8E8E93'; }
+
+// 從行程名稱取出最適合搜尋的關鍵字（優先英文部分）
+function extractSearchQuery(item) {
+  const name = item.name || '';
+  const enMatch = name.match(/[A-Za-z][A-Za-z0-9\s\-\'àáâãäåèéêëìíîïòóôõöùúûüñçßæœ,\.]+/g);
+  if (enMatch) {
+    const enPart = enMatch.join(' ').trim();
+    if (enPart.length > 3) return enPart;
+  }
+  return name.trim() || null;
+}
+
+// 地圖交通查詢狀態
+let mapTransportMode = false; // 是否在選點模式
+let mapSelA = null; // {index, item}
+let mapSelB = null; // {index, item}
+
+// 縮圖：Google Maps iframe + 彩色圖釘說明列
+function buildMapThumb(t) {
+  const curDay = t.currentDay || 0;
+  const items  = getItems(t, curDay).filter(it => it.name);
+  if (!items.length) return '';
+
+  // 用第一個景點/餐飲類當地圖中心，否則取第一個
+  const anchor = items.find(it => ['sight','food','shop'].includes(it.type)) || items[0];
+  const q = extractSearchQuery(anchor) || anchor.name;
+  const gmSrc = `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=14&output=embed&hl=zh-TW`;
+
+  // 圖釘說明列：數字=順序，顏色=類型，全部行程都顯示
+  const dots = items.map((it, i) => {
+    const col = pinColor(it.type);
+    const label = it.name.length > 8 ? it.name.slice(0,8)+'…' : it.name;
+    return `<span style="display:inline-flex;align-items:center;gap:3px;margin-right:6px;white-space:nowrap;flex-shrink:0;cursor:pointer;" data-focus-item="${i}">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${col};color:white;font-size:8px;font-weight:800;border:1.5px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);">${i+1}</span>
+      <span style="font-size:10px;font-weight:600;color:#333;">${esc(label)}</span>
+    </span>`;
+  }).join('');
+
+  // 交通查詢模式下的 A→B 選擇列
+  const transportBar = mapTransportMode ? buildTransportPickerBar(items) : '';
+
+  return `
+  <div style="border-bottom:1px solid var(--border);" id="mapThumbWrap">
+    <!-- 地圖 iframe（不 overflow:hidden，讓底部說明列正常顯示） -->
+    <div style="position:relative;">
+      <iframe id="mapThumbIframe" src="${gmSrc}" style="width:100%;height:130px;border:none;display:block;pointer-events:none;" loading="lazy"></iframe>
+
+      <!-- 交通查詢模式提示（只在選點模式顯示） -->
+      ${mapTransportMode ? `
+      <div style="position:absolute;top:8px;left:8px;right:48px;background:rgba(0,0,0,0.7);color:white;font-size:9px;font-weight:600;padding:4px 10px;border-radius:10px;z-index:20;text-align:center;">
+        ${!mapSelA ? '👇 在下方點選出發地 A' : '👇 在下方點選目的地 B'}
+      </div>
+      ` : ''}
+
+      <!-- 展開按鈕（右上角 icon） -->
+      <button id="btnOpenMap" style="position:absolute;top:8px;right:8px;width:32px;height:32px;background:rgba(255,255,255,0.92);border:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.15);padding:5px;z-index:20;">
+        <svg viewBox="0 0 100 100" fill="none" style="width:100%;height:100%;">
+          <path d="M10 10 H55 M75 10 H90 V25 M90 45 V90 H10 V10" stroke="#1a1a1a" stroke-width="13" stroke-linecap="square" fill="none"/>
+          <line x1="38" y1="62" x2="82" y2="18" stroke="#1a1a1a" stroke-width="13" stroke-linecap="round"/>
+          <polyline points="58,12 88,12 88,42" stroke="#1a1a1a" stroke-width="13" stroke-linecap="square" stroke-linejoin="miter" fill="none"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- 圖釘說明列（在 iframe 下方，始終顯示） -->
+    <div style="background:white;border-top:1px solid var(--border);padding:6px 10px;display:flex;align-items:center;overflow-x:auto;gap:0;-webkit-overflow-scrolling:touch;">
+      ${dots}
+    </div>
+  </div>`;
+}
+
+// A→B 選擇列（交通查詢模式下顯示在地圖底部）
+function buildTransportPickerBar(items) {
+  const aName = mapSelA !== null ? (items[mapSelA]?.name || '') : '';
+  const bName = mapSelB !== null ? (items[mapSelB]?.name || '') : '';
+  const aCol  = mapSelA !== null ? pinColor(items[mapSelA]?.type) : '#FF3B30';
+  const bCol  = mapSelB !== null ? pinColor(items[mapSelB]?.type) : '#34C759';
+  const ready = mapSelA !== null && mapSelB !== null;
+
+  // A → B Google Maps Directions URL
+  let dirUrl = '';
+  if (ready) {
+    const aQ = encodeURIComponent(extractSearchQuery(items[mapSelA]) || items[mapSelA].name);
+    const bQ = encodeURIComponent(extractSearchQuery(items[mapSelB]) || items[mapSelB].name);
+    dirUrl = `https://www.google.com/maps/dir/${aQ}/${bQ}`;
+  }
+
+  return `
+  <div style="background:white;border-top:1px solid #e0e0e0;padding:6px 10px;display:flex;align-items:center;gap:6px;">
+    <!-- A 槽 -->
+    <div style="flex:1;border:1.5px ${mapSelA!==null?'solid':'dashed'} ${mapSelA!==null?aCol:'#FF3B30'};border-radius:9px;padding:4px 7px;display:flex;align-items:center;gap:4px;min-width:0;">
+      <span style="width:16px;height:16px;border-radius:50%;background:${mapSelA!==null?aCol:'#FF3B30'};color:white;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${mapSelA!==null?(mapSelA+1):'A'}</span>
+      <span style="font-size:9px;font-weight:600;color:${mapSelA!==null?'#1a1a1a':'#FF3B30'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${mapSelA!==null?esc(aName.length>8?aName.slice(0,8)+'…':aName):'出發地…'}</span>
+      ${mapSelA!==null?`<span id="btnClearA" style="margin-left:auto;font-size:11px;color:#999;cursor:pointer;flex-shrink:0;">✕</span>`:''}
+    </div>
+    <span style="font-size:14px;color:#007AFF;font-weight:700;flex-shrink:0;">→</span>
+    <!-- B 槽 -->
+    <div style="flex:1;border:1.5px ${mapSelB!==null?'solid':'dashed'} ${mapSelB!==null?bCol:'#34C759'};border-radius:9px;padding:4px 7px;display:flex;align-items:center;gap:4px;min-width:0;">
+      <span style="width:16px;height:16px;border-radius:50%;background:${mapSelB!==null?bCol:'#34C759'};color:white;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${mapSelB!==null?(mapSelB+1):'B'}</span>
+      <span style="font-size:9px;font-weight:600;color:${mapSelB!==null?'#1a1a1a':'#34C759'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${mapSelB!==null?esc(bName.length>8?bName.slice(0,8)+'…':bName):'目的地…'}</span>
+      ${mapSelB!==null?`<span id="btnClearB" style="margin-left:auto;font-size:11px;color:#999;cursor:pointer;flex-shrink:0;">✕</span>`:''}
+    </div>
+    <!-- 開啟按鈕 -->
+    ${ready
+      ? `<a href="${dirUrl}" target="_blank" id="btnOpenDir" style="background:#007AFF;color:white;border:none;border-radius:9px;font-size:10px;font-weight:700;padding:6px 9px;text-decoration:none;white-space:nowrap;flex-shrink:0;box-shadow:0 2px 8px rgba(0,122,255,0.35);">🗺 開啟</a>`
+      : `<span style="background:#ccc;color:white;border-radius:9px;font-size:10px;font-weight:700;padding:6px 9px;white-space:nowrap;flex-shrink:0;">🗺 開啟</span>`
+    }
+  </div>`;
+}
+
+// 展開 modal：Google Maps iframe（可手指縮放）+ 景點清單（數字=順序，顏色=類型）
+function buildMapModal(t) {
+  const curDay = t.currentDay || 0;
+  const items  = getItems(t, curDay).filter(it => it.name);
+  if (!items.length) return '';
+  const dayLabel = (t.days||[])[curDay]?.label || `Day ${curDay+1}`;
+
+  // 路線 URL（全部行程串成路線）
+  const names = items.map(it => extractSearchQuery(it) || it.name).filter(Boolean);
+  const routeUrl = names.length <= 1
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(names[0]||items[0].name)}`
+    : `https://www.google.com/maps/dir/${names.map(n=>encodeURIComponent(n)).join('/')}`;
+
+  // embed：用第一個景點/餐飲類當中心
+  const anchor = items.find(it => ['sight','food','shop'].includes(it.type)) || items[0];
+  const q = extractSearchQuery(anchor) || anchor.name;
+  const gmSrc = `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=14&output=embed&hl=zh-TW`;
+
+  return `
+  <div class="map-modal-overlay" id="mapModalOverlay">
+    <div class="map-modal">
+      <div class="map-modal-header">
+        <div class="map-modal-title">🗺 ${esc(dayLabel)}</div>
+        <button class="map-modal-close" id="btnCloseMap">✕</button>
+      </div>
+      <iframe src="${gmSrc}" style="width:100%;height:320px;flex-shrink:0;border:none;display:block;" loading="lazy" allowfullscreen></iframe>
+      <div class="map-modal-list">
+        ${items.map((it, i) => {
+          const col = pinColor(it.type);
+          const navUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((extractSearchQuery(it)||it.name).trim())}`;
+          const tp = TYPES.find(x => x.key === it.type) || TYPES[5];
+          return `<div class="map-modal-item" data-modal-item="${i}">
+            <div class="mmi-num" style="background:${col}">${i+1}</div>
+            <div style="flex:1;min-width:0;">
+              <div class="mmi-name">${esc(it.name)}</div>
+              <div style="font-size:10px;color:var(--text3);">${tp.emoji} ${tp.label}${it.time?' · '+esc(it.time):''}</div>
+            </div>
+            <a class="mmi-nav" href="${navUrl}" target="_blank">導航</a>
+          </div>`;
+        }).join('')}
+        <div style="padding:10px 16px 16px;">
+          <a href="${routeUrl}" target="_blank" style="display:block;width:100%;text-align:center;padding:11px;background:#1a1a1a;color:white;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;">📍 在 Google Maps 開啟完整路線</a>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── 景點詳情頁（Wikimedia 圖片 + 簡介）──
+const PLACE_TYPE_EMOJI = { sight:'⛪', food:'🍽', hotel:'🏨', transport:'✈️', shop:'🛍', other:'📌' };
+
+async function fetchWikimediaPhoto(query) {
+  // 先試中文維基，再試英文維基（抓圖片）
+  const tryFetch = async (lang) => {
+    const url = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error();
+    return await res.json();
+  };
+  try {
+    // 優先抓中文
+    let data;
+    try { data = await tryFetch('zh'); } catch { data = await tryFetch('en'); }
+    return {
+      img: data.thumbnail?.source || data.originalimage?.source || null,
+      desc: data.extract || null,
+      wikiUrl: data.content_urls?.desktop?.page || null,
+      lang: data.lang || 'en',
+    };
+  } catch {
+    return { img: null, desc: null, wikiUrl: null };
+  }
+}
+
+async function showItemDetail(it, index) {
+  // 先顯示 loading sheet
+  const overlay = document.createElement('div');
+  overlay.className = 'detail-overlay';
+  overlay.id = 'detailOverlay';
+  const col = pinColor(it.type);
+  const tp = TYPES.find(x => x.key === it.type) || TYPES[5];
+
+  overlay.innerHTML = `
+  <div class="detail-sheet" id="detailSheet">
+    <!-- 固定 X 按鈕，永遠在右上角 -->
+    <button id="btnDetailCloseFixed" style="position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,0.45);border:none;color:white;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;">✕</button>
+    <div class="detail-loading">
+      <div class="spinner"></div>
+      <div>正在抓取景點資訊…</div>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  // 抓 Wikimedia 資料
+  const searchQ = extractSearchQuery(it) || it.name;
+  const wiki = await fetchWikimediaPhoto(searchQ);
+
+  // 建立 Google Maps 導航 URL
+  const navUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQ)}`;
+  const gmUrl  = `https://maps.google.com/?q=${encodeURIComponent(searchQ)}`;
+
+  const sheet = document.getElementById('detailSheet');
+  if (!sheet) return;
+
+  const photoHtml = wiki.img
+    ? `<div class="detail-photo-wrap">
+        <img src="${wiki.img}" alt="${esc(it.name)}" onerror="this.parentElement.style.background='linear-gradient(135deg,#667eea,#764ba2)'">
+        <div class="detail-photo-gradient"></div>
+        <div class="detail-photo-title">${esc(it.name)}</div>
+        <button class="detail-close-btn" id="btnDetailClose">✕</button>
+        <div class="detail-photo-source">📷 Wikipedia</div>
+      </div>`
+    : `<div class="detail-photo-placeholder">
+        ${PLACE_TYPE_EMOJI[it.type]||'📌'}
+        <div class="detail-photo-gradient"></div>
+        <div class="detail-photo-title" style="position:absolute;bottom:14px;left:16px;right:48px;color:white;font-size:18px;font-weight:800;">${esc(it.name)}</div>
+        <button class="detail-close-btn" id="btnDetailClose" style="position:absolute;top:12px;right:12px;">✕</button>
+      </div>`;
+
+  const descHtml = wiki.desc
+    ? `<p class="detail-desc">${esc(wiki.desc.length > 200 ? wiki.desc.slice(0,200)+'…' : wiki.desc)}</p>`
+    : it.desc
+      ? `<p class="detail-desc">${esc(it.desc)}</p>`
+      : `<p class="detail-desc" style="color:#aaa;">暫無介紹資訊</p>`;
+
+  const cost = Number(it.cost);
+
+  sheet.innerHTML = `
+    ${photoHtml}
+    <div class="detail-body">
+      <div class="detail-tags">
+        <span class="detail-tag blue">${tp.emoji} ${tp.label}</span>
+        <span class="detail-tag" style="background:${col}20;color:${col};">＃${index+1}</span>
+        ${it.time ? `<span class="detail-tag">🕐 ${esc(it.time)}</span>` : ''}
+      </div>
+      ${descHtml}
+      <div class="detail-info-row">
+        <div class="detail-info-box">
+          <div class="detail-info-label">費用</div>
+          <div class="detail-info-value">${cost === 0 ? '免費' : 'NT$'+fmt(cost)}</div>
+        </div>
+        ${wiki.wikiUrl ? `<div class="detail-info-box">
+          <div class="detail-info-label">資料來源</div>
+          <div class="detail-info-value" style="font-size:11px;"><a href="${wiki.wikiUrl}" target="_blank" style="color:#007AFF;text-decoration:none;">Wikipedia →</a></div>
+        </div>` : ''}
+      </div>
+      <div class="detail-actions">
+        <a href="${navUrl}" target="_blank" class="detail-act primary">🗺 導航前往</a>
+        <a href="${gmUrl}" target="_blank" class="detail-act secondary">Google Maps</a>
+      </div>
+    </div>`;
+
+  // 關閉按鈕（固定 X 在右上角）
+  const closeBtnFixed = document.getElementById('btnDetailCloseFixed');
+  if (closeBtnFixed) closeBtnFixed.onclick = () => overlay.remove();
+  const closeBtn = document.getElementById('btnDetailClose');
+  if (closeBtn) closeBtn.onclick = () => overlay.remove();
+}
+
+function buildItineraryTab(t) {
+  const curDay = t.currentDay || 0;
+  const di     = getItems(t, curDay);
+  const ds     = getDaySpent(t, curDay);
+  const spent  = getTotalSpent(t);
+  return `
+  <div>
+    <div class="trip-content">
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-v">${di.length}</div><div class="stat-l">行程數</div></div>
+        <div class="stat-box"><div class="stat-v">NT$${fmt(ds)}</div><div class="stat-l">今日花費</div></div>
+        <div class="stat-box"><div class="stat-v">NT$${fmt(Math.max(0, t.budget - spent))}</div><div class="stat-l">剩餘預算</div></div>
+      </div>
+      <!-- 今日行程標題列 + 交通查詢按鈕 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div class="section-lbl" style="margin-bottom:0;">今日行程</div>
+        ${di.length >= 2 ? (mapTransportMode
+          ? `<button id="btnCancelTransport" style="background:#f0f0f0;color:#555;border:none;border-radius:12px;font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;display:flex;align-items:center;gap:4px;">✕ 取消查詢</button>`
+          : `<button id="btnTransportMode" style="background:#FF9500;color:white;border:none;border-radius:12px;font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;box-shadow:0 2px 8px rgba(255,149,0,0.3);display:flex;align-items:center;gap:4px;">🚌 交通查詢</button>`)
+          : ''}
+      </div>
+      ${mapTransportMode && di.length >= 2 ? `
+      <!-- A→B 選擇列（在行程列表上方） -->
+      ${buildTransportPickerBar(di)}
+      ` : ''}
+      ${di.length === 0
+        ? `<div class="empty"><div class="empty-icon">✈</div><div class="empty-t">尚無行程</div><div class="empty-s">點下方按鈕新增</div></div>`
+        : di.map((it, i) => buildItemCard(it, i)).join('')}
+    </div>
+    <button class="fab" id="btnFab">＋&nbsp;&nbsp;新增行程</button>
+  </div>`;
+}
+
+function buildItemCard(it, index) {
+  const tp   = TYPES.find(x => x.key === it.type) || TYPES[5];
+  const free = Number(it.cost) === 0;
+  const col  = pinColor(it.type);
+
+  // 交通查詢模式：顯示選擇圓圈
+  const isSelA = mapTransportMode && mapSelA === index;
+  const isSelB = mapTransportMode && mapSelB === index;
+  const selectCircle = mapTransportMode ? `
+    <div class="item-select-circle${isSelA?' sel-a':isSelB?' sel-b':''}" data-select-item="${index}">
+      ${isSelA ? 'A' : isSelB ? 'B' : ''}
+    </div>` : '';
+
+  const cardBg = isSelA ? 'background:#fff0ee;border-color:#FF3B30;' : isSelB ? 'background:#effff3;border-color:#34C759;' : '';
+
+  return `
+  <div class="tl-item">
+    <div class="tl-left">
+      <div class="tl-time">${esc(it.time)}</div>
+      <div class="tl-dot"></div>
+      <div class="tl-line"></div>
+    </div>
+    <div class="item-card" style="${cardBg}" data-focus-card="${index}">
+      <div class="card-head">
+        <div class="card-name">${esc(it.name)}</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="type-tag">${tp.emoji} ${tp.label}</span>
+          <!-- 彩色數字圖釘 -->
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${col};color:white;font-size:9px;font-weight:800;flex-shrink:0;">${index+1}</span>
+          ${selectCircle}
+        </div>
+      </div>
+      ${it.desc ? `<div class="card-desc">${esc(it.desc)}</div>` : ''}
+      <div class="card-footer">
+        <span class="cost-lbl${free?' free':''}">${free ? '免費' : 'NT$ '+fmt(it.cost)}</span>
+        <div class="actions">
+          ${it.mapUrl ? `<button class="act-btn" data-map="${esc(it.mapUrl)}">🗺</button>` : ''}
+          <button class="act-btn" data-edit="${it._key}">✎</button>
+          <button class="act-btn" data-del-item="${it._key}">✕</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── 記帳 Tab ──
+function buildLedgerTab(t) {
+  const entries  = getLedgerEntries(t);
+  const total    = getLedgerTotal(t);
+  const members  = Object.keys(t.members || {});
+  const { paid, share, balances } = calcBalances(t);
+  const settlements = calcSettlements(balances);
+  const twdTotal = toTWD(total);
+  const curSym   = getCurSym();
+  const otherCurrencies = CURRENCIES.map(c=>c.code).filter(c => c !== ledgerCurrency);
+
+  return `
+  <div class="ledger-content">
+    <!-- 幣別設定 -->
+    <div class="currency-strip">
+      <span class="currency-label">幣別</span>
+      <select class="cur-select" id="curSelect">
+        ${CURRENCIES.map(c => `<option value="${c.code}"${ledgerCurrency===c.code?' selected':''}>${c.sym} ${c.code}　${c.name}</option>`).join('')}
+      </select>
+      ${ledgerCurrency !== 'TWD' ? `
+        <span class="rate-label">1${curSym}=</span>
+        <input class="rate-inp" id="rateInp" type="number" value="${ledgerRates[ledgerCurrency]}" placeholder="匯率" step="0.001" style="width:72px" />
+        <span class="rate-label">NT$</span>
+      ` : ''}
+      <button id="btnRefreshRates" title="更新即時匯率" style="margin-left:auto;border:none;background:transparent;padding:4px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+        <svg id="refreshIcon" width="18" height="18" viewBox="0 0 24 24" fill="#1A1A1A" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 4C8.13 4 5 7.13 5 11s3.13 7 7 7c3.27 0 6.01-2.23 6.78-5.25H16.7A5.004 5.004 0 0 1 12 16c-2.76 0-5-2.24-5-5s2.24-5 5-5c1.38 0 2.63.57 3.53 1.47L13 10h6V4l-2.06 2.06C15.68 4.78 13.93 4 12 4z"/>
+        </svg>
+      </button>
+    </div>
+    ${ratesLastUpdated ? `<div style="font-size:11px;color:var(--text3);margin:-10px 0 12px;text-align:right;">匯率更新於 ${ratesLastUpdated}</div>` : ''}
+
+    <!-- 總覽 -->
+    <div class="ledger-summary">
+      <div class="ls-box">
+        <div class="ls-v">${curSym}${fmt(total)}</div>
+        ${ledgerCurrency !== 'TWD' ? `<div class="ls-v2">≈ NT$${fmt(twdTotal)}</div>` : ''}
+        <div class="ls-l">總消費</div>
+      </div>
+      <div class="ls-box">
+        <div class="ls-v">${entries.length}</div>
+        <div class="ls-l">筆數</div>
+      </div>
+      <div class="ls-box">
+        <div class="ls-v">${members.length}</div>
+        <div class="ls-l">成員</div>
+      </div>
+    </div>
+
+    <!-- 消費明細 -->
+    ${entries.length ? `<div class="section-lbl">消費明細</div>` : ''}
+    ${entries.length === 0
+      ? `<div class="empty"><div class="empty-icon">💰</div><div class="empty-t">還沒有記帳</div><div class="empty-s">在下方輸入列快速記帳</div></div>`
+      : entries.map(e => buildLedgerCard(e, members, curSym)).join('')}
+
+    <!-- 結算 -->
+    ${members.length > 1 && entries.length > 0 ? buildSettleSection(balances, settlements, paid, curSym) : ''}
+  </div>
+
+  <!-- 快速輸入列 -->
+  <div class="quick-add-bar">
+    <div class="qa-row1">
+      <input class="qa-inp" id="qaName" type="text" placeholder="項目名稱" value="${esc(LF.name)}" />
+      <input class="qa-inp qa-amount" id="qaAmt" type="number" placeholder="${curSym} 金額" value="${esc(LF.amount)}" inputmode="decimal" />
+    </div>
+    <div class="qa-row2">
+      <select class="qa-payer" id="qaPayer">
+        <option value="">誰付的？</option>
+        ${members.map(m => `<option value="${esc(m)}"${LF.payer===m?' selected':''}>${esc(m)}</option>`).join('')}
+      </select>
+      <button class="qa-split-btn" id="btnSplitConfig">👥 分攤</button>
+      <button class="qa-submit" id="btnAddLedger">入帳</button>
+    </div>
+  </div>`;
+}
+
+function buildLedgerCard(e, members, curSym) {
+  const amt     = Number(e.amount) || 0;
+  const twdAmt  = toTWD(amt);
+  let splitInfo = '';
+  if (e.splits) {
+    const parts = Object.entries(e.splits)
+      .map(([m, a]) => `${esc(m)}:${curSym}${fmt(Math.round(Number(a)))}`)
+      .join(' / ');
+    splitInfo = `<div class="lc-split-detail">${parts}</div>`;
+  } else {
+    const n = members.length;
+    if (n > 0) {
+      const perPerson = Math.round(amt / n);
+      splitInfo = `<div class="lc-split-detail">平均分攤 各 ${curSym}${fmt(perPerson)}${ledgerCurrency!=='TWD'?` (≈ NT$${fmt(toTWD(perPerson))})`:''}  ·  ${members.join('、')}</div>`;
+    }
+  }
+  return `
+  <div class="ledger-card">
+    <div class="lc-top">
+      <div>
+        <div class="lc-name">${esc(e.name)}</div>
+        <div class="lc-tags" style="margin-top:6px">
+          ${e.payer ? `<span class="lc-tag payer">💳 ${esc(e.payer)}</span>` : ''}
+          ${e.note  ? `<span class="lc-tag">${esc(e.note)}</span>` : ''}
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="lc-amount">${curSym}${fmt(amt)}</div>
+        ${ledgerCurrency !== 'TWD' ? `<div class="lc-amount-twd">≈ NT$${fmt(twdAmt)}</div>` : ''}
+      </div>
+    </div>
+    ${splitInfo}
+    <div class="lc-footer">
+      <button class="act-btn" data-del-ledger="${e._key}">✕</button>
+    </div>
+  </div>`;
+}
+
+function buildSettleSection(balances, settlements, paid, curSym) {
+  const memberRows = Object.entries(balances).map(([name, bal]) => {
+    const cls = bal > 0.5 ? 'get' : bal < -0.5 ? 'owe' : 'even';
+    const label = bal > 0.5 ? `+${curSym}${fmt(Math.round(bal))}` : bal < -0.5 ? `-${curSym}${fmt(Math.round(-bal))}` : '✓ 平';
+    return `
+    <div class="settle-person-row">
+      <div>
+        <div class="sp-name">${esc(name)}</div>
+        <div class="sp-paid">已付 ${curSym}${fmt(Math.round(paid[name]||0))}</div>
+      </div>
+      <div class="sp-balance ${cls}">${label}</div>
+    </div>`;
+  }).join('');
+
+  const arrowRows = settlements.map(s => `
+    <div class="settle-arrow-row">
+      <span class="sa-from">${esc(s.from)}</span>
+      <span style="color:var(--text3)">→ 還給 →</span>
+      <span class="sa-to">${esc(s.to)}</span>
+      <span class="sa-amount">${curSym}${fmt(Math.round(s.amt))}</span>
+    </div>`).join('');
+
+  return `
+  <div class="settle-section">
+    <div class="settle-title">結算狀況</div>
+    <div class="settle-card">${memberRows}</div>
+    ${settlements.length > 0 ? `
+      <div class="settle-title" style="margin-top:16px">誰欠誰</div>
+      ${arrowRows}
+    ` : `<div style="font-size:13px;color:var(--text3);text-align:center;padding:12px 0;">🎉 大家都平了！</div>`}
+  </div>`;
+}
+
+// ── 分攤 Modal ──
+function buildSplitModal() {
+  const t = trips[curTripId];
+  const members = Object.keys(t.members || {});
+  const totalAmt = Number(splitModal.totalAmt) || 0;
+  const isEqual  = splitModal.mode === 'equal';
+
+  let allocatedSum = 0;
+  if (!isEqual) {
+    allocatedSum = Object.values(splitModal.customAmts).reduce((a, v) => a + (Number(v)||0), 0);
+  }
+
+  const memberRows = members.map(m => {
+    const checked = !!splitModal.members[m];
+    const customVal = splitModal.customAmts[m] !== undefined ? splitModal.customAmts[m] : '';
+    const equalShare = isEqual && checked
+      ? (() => { const n = Object.values(splitModal.members).filter(Boolean).length; return n > 0 ? (totalAmt / n).toFixed(0) : ''; })()
+      : '';
+    return `
+    <div class="split-member-row">
+      <input type="checkbox" class="sm-check" data-sm="${esc(m)}" ${checked?'checked':''} />
+      <span class="sm-name">${esc(m)}</span>
+      ${isEqual
+        ? `<input class="sm-amt" value="${equalShare}" disabled placeholder="自動" />`
+        : `<input class="sm-amt" type="number" id="sma_${esc(m)}" value="${customVal}" placeholder="金額" inputmode="decimal" data-sma="${esc(m)}" />`}
+    </div>`;
+  }).join('');
+
+  const equalN = Object.values(splitModal.members).filter(Boolean).length;
+  const allocOk = isEqual ? true : Math.abs(allocatedSum - totalAmt) < 1;
+  const allocClass = allocOk ? 'ok' : 'err';
+  const curSym = getCurSym();
+
+  return `
+  <div class="overlay" id="olSplit">
+    <div class="modal">
+      <div class="m-handle"></div>
+      <div class="m-title">👥 設定分攤</div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:14px">總金額：<strong style="color:var(--text)">${curSym}${fmt(totalAmt)}</strong></div>
+      <div class="split-mode-row">
+        <button class="split-mode-btn${isEqual?' on':''}" id="splitModeEqual">平均分攤</button>
+        <button class="split-mode-btn${!isEqual?' on':''}" id="splitModeCustom">自訂金額</button>
+      </div>
+      <div>${memberRows}</div>
+      ${!isEqual ? `
+        <div class="split-total-row">
+          <span class="split-total-lbl">已分配 / 總金額</span>
+          <span class="split-total-val ${allocClass}">${curSym}${fmt(Math.round(allocatedSum))} / ${curSym}${fmt(totalAmt)}</span>
+        </div>
+      ` : `
+        <div style="font-size:12px;color:var(--text3);padding:10px 0">勾選參與的成員，金額自動平均分配</div>
+      `}
+      <button class="btn-save" id="btnSaveSplit">確認分攤設定</button>
+      <button class="btn-cancel" id="btnCancelSplit">取消</button>
+    </div>
+  </div>`;
+}
+
+// ── Modals ──
+function buildModal() {
+  if (modal === 'addItem' || modal === 'editItem') return buildModalItem();
+  if (modal === 'newTrip' || modal === 'editTrip') return buildModalTrip();
+  if (modal === 'share')  return buildModalShare();
+  if (modal === 'split')  return buildSplitModal();
+  return '';
+}
+
+function buildModalItem() {
+  const isEdit = modal === 'editItem';
+  return `
+  <div class="overlay" id="olItem">
+    <div class="modal">
+      <div class="m-handle"></div>
+      <div class="m-title">${isEdit ? '編輯行程' : '新增行程'}</div>
+      <div class="f-group">
+        <label class="f-lbl">類型</label>
+        <div class="t-chips">
+          ${TYPES.map(tp => `<button class="t-chip${F.type===tp.key?' on':''}" data-type="${tp.key}">${tp.emoji} ${tp.label}</button>`).join('')}
+        </div>
+      </div>
+      <div class="f-group"><label class="f-lbl">名稱</label><input class="f-inp" id="fName" type="text" placeholder="景點/餐廳/活動" value="${esc(F.name)}" /></div>
+      <div class="f-row">
+        <div class="f-group"><label class="f-lbl">時間</label><input class="f-inp" id="fTime" type="time" value="${F.time}" /></div>
+        <div class="f-group"><label class="f-lbl">費用 NT$</label><input class="f-inp" id="fCost" type="number" placeholder="0" value="${F.cost}" inputmode="numeric" /></div>
+      </div>
+      <div class="f-group"><label class="f-lbl">備註</label><textarea class="f-ta" id="fDesc" placeholder="地址、開放時間…">${esc(F.desc)}</textarea></div>
+      <div class="f-group"><label class="f-lbl">地圖連結</label><input class="f-inp" id="fMap" type="url" placeholder="https://maps.google.com/…" value="${esc(F.mapUrl)}" /></div>
+      <button class="btn-save" id="btnSaveItem">${isEdit ? '儲存修改' : '新增行程'}</button>
+      <button class="btn-cancel" id="btnCancelItem">取消</button>
+    </div>
+  </div>`;
+}
+
+function buildModalTrip() {
+  const isEdit = modal === 'editTrip';
+  return `
+  <div class="overlay" id="olTrip">
+    <div class="modal">
+      <div class="m-handle"></div>
+      <div class="m-title">${isEdit ? '編輯行程設定' : '建立新旅遊計畫'}</div>
+      <div class="f-group"><label class="f-lbl">旅遊名稱</label><input class="f-inp" id="tfName" type="text" value="${esc(TF.name)}" placeholder="沖繩四日遊" /></div>
+      <div class="f-group"><label class="f-lbl">旅遊日期</label><input class="f-inp" id="tfDates" type="text" value="${esc(TF.dates)}" placeholder="2026/06/01 — 06/04" /></div>
+      <div class="f-group"><label class="f-lbl">總預算 NT$</label><input class="f-inp" id="tfBudget" type="number" value="${TF.budget}" placeholder="20000" inputmode="numeric" /></div>
+      <div class="f-group"><label class="f-lbl">天數</label><input class="f-inp" id="tfDays" type="number" value="${TF.dayCount}" placeholder="3" min="1" max="30" inputmode="numeric" /></div>
+      <button class="btn-save" id="btnSaveTrip">${isEdit ? '儲存設定' : '建立行程'}</button>
+      ${isEdit ? `<button class="btn-danger" id="btnDelTrip">刪除這個旅遊計畫</button>` : ''}
+      <button class="btn-cancel" id="btnCancelTrip">取消</button>
+    </div>
+  </div>`;
+}
+
+function buildModalShare() {
+  return `
+  <div class="overlay" id="olShare">
+    <div class="modal">
+      <div class="m-handle"></div>
+      <div class="m-title">🔗 邀請朋友加入</div>
+      <div class="share-box">
+        <div class="share-box-title">邀請連結</div>
+        <div class="share-link-row">
+          <div class="share-url-text">${esc(shareUrl)}</div>
+          <button class="copy-btn" id="btnCopyUrl">複製</button>
+        </div>
+        <div class="share-desc">把連結傳給朋友，他們點開輸入暱稱就能加入！✈️</div>
+      </div>
+      <button class="line-btn" id="btnLine">💬 分享到 LINE</button>
+      <button class="btn-cancel" id="btnCancelShare">關閉</button>
+    </div>
+  </div>`;
+}
+
+// ── 綁定事件 ──
+function bindEvents() {
+
+  // JOIN
+  if ($('joinBtn')) {
+    $('joinBtn').onclick = () => {
+      const nick = $('nickInput').value.trim();
+      if (!nick) { $('joinErr').style.display = 'block'; return; }
+      nickname = nick;
+      localStorage.setItem('travel_nickname', nick);
+      if (joinTripId) doJoinTrip(joinTripId); else startListening();
+    };
+    $('nickInput').onkeydown = e => { if (e.key === 'Enter') $('joinBtn').click(); };
+  }
+
+  // HOME
+  [$('btnNewTrip'), $('btnFabNew')].forEach(b => {
+    if (b) b.onclick = () => { TF = {name:'',dates:'',budget:'',dayCount:'3'}; modal='newTrip'; render(); };
+  });
+  document.querySelectorAll('[data-open]').forEach(el => {
+    el.onclick = e => {
+      if (e.target.closest('[data-del]') || e.target.closest('[data-invite]')) return;
+      curTripId = el.dataset.open; screen = 'trip'; tripTab = 'itinerary'; render();
+    };
+  });
+  document.querySelectorAll('[data-del]').forEach(b => {
+    b.onclick = e => {
+      e.stopPropagation();
+      if (confirm('確定要離開這個行程？')) db.ref('trips/' + b.dataset.del + '/members/' + nickname).remove();
+    };
+  });
+  document.querySelectorAll('[data-invite]').forEach(b => {
+    b.onclick = e => { e.stopPropagation(); openShare(b.dataset.invite); };
+  });
+
+  // TRIP HEADER
+  if ($('btnBack'))     $('btnBack').onclick     = () => { screen='home'; render(); };
+  if ($('btnInvite'))   $('btnInvite').onclick   = () => openShare(curTripId);
+  if ($('btnEditTrip')) $('btnEditTrip').onclick  = () => {
+    const t = trips[curTripId];
+    TF = {name:t.name, dates:t.dates||'', budget:t.budget||'', dayCount:(t.days||[]).length};
+    modal = 'editTrip'; render();
+  };
+  if ($('tabItinerary')) $('tabItinerary').onclick = () => { tripTab = 'itinerary'; render(); };
+  if ($('tabLedger'))    $('tabLedger').onclick    = () => { tripTab = 'ledger';    render(); };
+
+  // ITINERARY TAB
+  if ($('btnAddDay')) $('btnAddDay').onclick = () => {
+    const t = trips[curTripId];
+    const days = [...(t.days||[]), {label:'Day '+((t.days||[]).length+1)}];
+    db.ref('trips/'+curTripId+'/days').set(days);
+    db.ref('trips/'+curTripId+'/currentDay').set(days.length-1);
+  };
+  document.querySelectorAll('[data-day]').forEach(b => {
+    b.onclick = () => db.ref('trips/'+curTripId+'/currentDay').set(+b.dataset.day);
+  });
+  if ($('btnFab')) $('btnFab').onclick = () => {
+    editKey = null; F = {time:'09:00', name:'', type:'sight', desc:'', cost:'', mapUrl:''}; modal = 'addItem'; render();
+  };
+  document.querySelectorAll('[data-map]').forEach(b => {
+    b.onclick = () => window.open(b.dataset.map, '_blank');
+  });
+
+  // MAP THUMB & MODAL
+  if ($('btnOpenMap')) {
+    $('btnOpenMap').onclick = () => {
+      const t = trips[curTripId];
+      const mapModalHtml = buildMapModal(t);
+      if (!mapModalHtml) return;
+      const div = document.createElement('div');
+      div.innerHTML = mapModalHtml;
+      document.body.appendChild(div.firstElementChild);
+      const overlay = document.getElementById('mapModalOverlay');
+      const closeBtn = document.getElementById('btnCloseMap');
+      if (closeBtn) closeBtn.onclick = () => overlay && overlay.remove();
+      if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    };
+  }
+
+  // 交通查詢模式 開啟
+  if ($('btnTransportMode')) {
+    $('btnTransportMode').onclick = () => {
+      mapTransportMode = true; mapSelA = null; mapSelB = null; render();
+    };
+  }
+  // 交通查詢模式 取消
+  if ($('btnCancelTransport')) {
+    $('btnCancelTransport').onclick = () => {
+      mapTransportMode = false; mapSelA = null; mapSelB = null; render();
+    };
+  }
+  // 清除 A
+  if ($('btnClearA')) {
+    $('btnClearA').onclick = (e) => { e.stopPropagation(); mapSelA = null; render(); };
+  }
+  // 清除 B
+  if ($('btnClearB')) {
+    $('btnClearB').onclick = (e) => { e.stopPropagation(); mapSelB = null; render(); };
+  }
+
+  // 選點圓圈（行程列表點擊選 A 或 B）
+  document.querySelectorAll('[data-select-item]').forEach(el => {
+    el.onclick = (e) => {
+      e.stopPropagation();
+      const idx = +el.dataset.selectItem;
+      if (mapSelA === null) {
+        mapSelA = idx;
+      } else if (mapSelB === null && idx !== mapSelA) {
+        mapSelB = idx;
+      } else if (idx === mapSelA) {
+        mapSelA = null;
+      } else if (idx === mapSelB) {
+        mapSelB = null;
+      } else {
+        // 兩個都選了，點新的：替換 B
+        mapSelB = idx;
+      }
+      render();
+    };
+  });
+
+  // 點行程卡片 → (1) 地圖跳轉 + (2) 開啟景點詳情頁
+  document.querySelectorAll('[data-focus-card]').forEach(card => {
+    card.onclick = (e) => {
+      // 如果點到 act-btn 或 select-circle 就不處理
+      if (e.target.closest('.act-btn') || e.target.closest('[data-select-item]') || e.target.closest('[data-map]')) return;
+      const t = trips[curTripId];
+      const curDay = t.currentDay || 0;
+      const items = getItems(t, curDay).filter(it => it.name);
+      const idx = +card.dataset.focusCard;
+      const it = items[idx];
+      if (!it) return;
+
+      // 交通查詢模式：點卡片等同點選點圓圈
+      if (mapTransportMode) {
+        if (mapSelA === null) {
+          mapSelA = idx;
+        } else if (mapSelB === null && idx !== mapSelA) {
+          mapSelB = idx;
+        } else if (idx === mapSelA) {
+          mapSelA = null;
+        } else if (idx === mapSelB) {
+          mapSelB = null;
+        } else {
+          mapSelB = idx;
+        }
+        render();
+        return;
+      }
+
+      // 正常模式：地圖跳轉到該位置
+      const q = extractSearchQuery(it) || it.name;
+      const iframe = $('mapThumbIframe');
+      if (iframe) {
+        iframe.src = `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=16&output=embed&hl=zh-TW`;
+        document.querySelectorAll('[data-focus-item]').forEach((dot, i) => {
+          dot.style.opacity = i === idx ? '1' : '0.4';
+          dot.style.transform = i === idx ? 'scale(1.1)' : 'scale(1)';
+        });
+        const mapWrap = $('mapThumbWrap');
+        if (mapWrap) mapWrap.scrollIntoView({behavior:'smooth', block:'nearest'});
+      }
+
+      // 開啟景點詳情頁
+      showItemDetail(it, idx);
+    };
+  });
+
+  // 圖釘說明列點擊 → 也可以跳地圖
+  document.querySelectorAll('[data-focus-item]').forEach(dot => {
+    dot.onclick = () => {
+      const t = trips[curTripId];
+      const curDay = t.currentDay || 0;
+      const items = getItems(t, curDay).filter(it => it.name);
+      const idx = +dot.dataset.focusItem;
+      const it = items[idx];
+      if (!it) return;
+      const q = extractSearchQuery(it) || it.name;
+      const iframe = $('mapThumbIframe');
+      if (iframe) {
+        iframe.src = `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=16&output=embed&hl=zh-TW`;
+        document.querySelectorAll('[data-focus-item]').forEach((d, i) => {
+          d.style.opacity = i === idx ? '1' : '0.4';
+          d.style.transform = i === idx ? 'scale(1.1)' : 'scale(1)';
+        });
+      }
+    };
+  });
+  document.querySelectorAll('[data-edit]').forEach(b => {
+    b.onclick = () => {
+      const it = (trips[curTripId].items||{})[b.dataset.edit];
+      if (!it) return;
+      editKey = b.dataset.edit;
+      F = {time:it.time, name:it.name, type:it.type||'sight', desc:it.desc||'', cost:it.cost||'', mapUrl:it.mapUrl||''};
+      modal = 'editItem'; render();
+    };
+  });
+  document.querySelectorAll('[data-del-item]').forEach(b => {
+    b.onclick = () => {
+      if (confirm('確定刪除這個行程？')) db.ref('trips/'+curTripId+'/items/'+b.dataset.delItem).remove();
+    };
+  });
+
+  // LEDGER TAB
+  if ($('curSelect')) {
+    $('curSelect').onchange = () => {
+      ledgerCurrency = $('curSelect').value;
+      localStorage.setItem('ledger_currency', ledgerCurrency);
+      render();
+    };
+  }
+  if ($('btnRefreshRates')) {
+    $('btnRefreshRates').onclick = async () => {
+      const icon = $('refreshIcon');
+      if (icon) icon.style.animation = 'spin 0.8s linear infinite';
+      $('btnRefreshRates').disabled = true;
+      await fetchLiveRates();
+      if (icon) icon.style.animation = '';
+      $('btnRefreshRates').disabled = false;
+    };
+  }
+  if ($('rateInp')) {
+    $('rateInp').oninput = () => {
+      const v = parseFloat($('rateInp').value);
+      if (v > 0) {
+        ledgerRates[ledgerCurrency] = v;
+        localStorage.setItem('rate_' + ledgerCurrency, v);
+      }
+    };
+    // debounce re-render
+    $('rateInp').onchange = () => render();
+  }
+  document.querySelectorAll('[data-del-ledger]').forEach(b => {
+    b.onclick = () => {
+      if (confirm('確定刪除這筆記帳？')) db.ref('trips/'+curTripId+'/ledger/'+b.dataset.delLedger).remove();
+    };
+  });
+
+  // 快速入帳
+  if ($('qaName'))  $('qaName').oninput  = () => { LF.name   = $('qaName').value; };
+  if ($('qaAmt'))   $('qaAmt').oninput   = () => { LF.amount = $('qaAmt').value; };
+  if ($('qaPayer')) $('qaPayer').onchange = () => { LF.payer = $('qaPayer').value; };
+
+  if ($('btnSplitConfig')) $('btnSplitConfig').onclick = () => {
+    const t = trips[curTripId];
+    const members = Object.keys(t.members || {});
+    const amt = Number($('qaAmt') ? $('qaAmt').value : LF.amount) || 0;
+    // 初始化 splitModal
+    if (Object.keys(splitModal.members).length === 0) {
+      members.forEach(m => { splitModal.members[m] = true; });
+    }
+    splitModal.totalAmt = amt;
+    splitModal.name     = $('qaName') ? $('qaName').value : LF.name;
+    splitModal.payer    = $('qaPayer') ? $('qaPayer').value : LF.payer;
+    modal = 'split'; render();
+  };
+
+  if ($('btnAddLedger')) $('btnAddLedger').onclick = () => {
+    const name   = $('qaName')  ? $('qaName').value.trim()  : LF.name.trim();
+    const amount = $('qaAmt')   ? Number($('qaAmt').value)   : Number(LF.amount);
+    const payer  = $('qaPayer') ? $('qaPayer').value         : LF.payer;
+    if (!name)   { alert('請輸入項目名稱'); return; }
+    if (!amount) { alert('請輸入金額'); return; }
+    if (!payer)  { alert('請選擇誰付的'); return; }
+    const entry = { name, amount, payer, currency: ledgerCurrency, createdAt: Date.now(), createdBy: nickname };
+    if (splitModal.mode === 'custom' && Object.keys(splitModal.customAmts).length > 0) {
+      entry.splits = {...splitModal.customAmts};
+    }
+    db.ref('trips/'+curTripId+'/ledger').push(entry);
+    LF = {name:'', amount:'', payer:''};
+    splitModal = { open:false, mode:'equal', members:{}, customAmts:{}, totalAmt:0, payer:'', name:'' };
+    render();
+  };
+
+  // MODAL — Item
+  if (modal === 'addItem' || modal === 'editItem') {
+    document.querySelectorAll('[data-type]').forEach(b => {
+      b.onclick = () => { readForm(); F.type = b.dataset.type; render(); };
+    });
+    if ($('btnCancelItem')) $('btnCancelItem').onclick = closeModal;
+    if ($('olItem'))        $('olItem').onclick = e => { if (e.target.id==='olItem') closeModal(); };
+    if ($('btnSaveItem'))   $('btnSaveItem').onclick = () => {
+      readForm();
+      if (!F.name.trim()) { alert('請輸入行程名稱'); return; }
+      const t = trips[curTripId];
+      const day = t.currentDay || 0;
+      const data = {...F, cost:Number(F.cost)||0, day, addedBy:nickname};
+      if (modal==='editItem' && editKey) {
+        db.ref('trips/'+curTripId+'/items/'+editKey).update(data);
+      } else {
+        db.ref('trips/'+curTripId+'/items').push(data);
+      }
+      closeModal();
+    };
+  }
+
+  // MODAL — Trip
+  if (modal === 'newTrip' || modal === 'editTrip') {
+    if ($('btnCancelTrip')) $('btnCancelTrip').onclick = closeModal;
+    if ($('olTrip'))        $('olTrip').onclick = e => { if (e.target.id==='olTrip') closeModal(); };
+    if ($('btnDelTrip'))    $('btnDelTrip').onclick = () => {
+      if (confirm('確定要刪除這個旅遊計畫？')) {
+        db.ref('trips/'+curTripId).remove();
+        screen='home'; curTripId=null; closeModal();
+      }
+    };
+    if ($('btnSaveTrip'))   $('btnSaveTrip').onclick = () => {
+      const name = $('tfName').value.trim();
+      if (!name) { alert('請輸入旅遊名稱'); return; }
+      const dates  = $('tfDates').value;
+      const budget = Number($('tfBudget').value) || 0;
+      const dc     = Math.max(1, Math.min(30, parseInt($('tfDays').value) || 3));
+      if (modal === 'editTrip') {
+        const t = trips[curTripId];
+        const oldDays = t.days || [];
+        const newDays = Array.from({length:dc}, (_,i) => i<oldDays.length ? oldDays[i] : {label:'Day '+(i+1)});
+        db.ref('trips/'+curTripId).update({name, dates, budget, days:newDays});
+        closeModal();
+      } else {
+        const ref  = db.ref('trips').push();
+        const days = Array.from({length:dc}, (_,i) => ({label:'Day '+(i+1)}));
+        ref.set({name, dates, budget, days, members:{[nickname]:true}, items:{}, currentDay:0}).then(() => {
+          curTripId = ref.key; screen = 'trip'; closeModal();
+        });
+      }
+    };
+  }
+
+  // MODAL — Share
+  if (modal === 'share') {
+    if ($('btnCancelShare')) $('btnCancelShare').onclick = closeModal;
+    if ($('olShare'))        $('olShare').onclick = e => { if (e.target.id==='olShare') closeModal(); };
+    if ($('btnCopyUrl'))     $('btnCopyUrl').onclick = () => {
+      navigator.clipboard ? navigator.clipboard.writeText(shareUrl).then(()=>alert('✅ 已複製！')) : fallbackCopy(shareUrl);
+    };
+    if ($('btnLine')) $('btnLine').onclick = () => {
+      window.open('https://line.me/R/msg/text/?' + encodeURIComponent('來加入我的旅遊行程規劃！✈️\n' + shareUrl), '_blank');
+    };
+  }
+
+  // MODAL — Split
+  if (modal === 'split') {
+    if ($('btnCancelSplit')) $('btnCancelSplit').onclick = () => { modal = null; render(); };
+    if ($('olSplit'))        $('olSplit').onclick = e => { if (e.target.id==='olSplit') { modal=null; render(); } };
+    if ($('splitModeEqual')) $('splitModeEqual').onclick = () => { splitModal.mode = 'equal'; render(); };
+    if ($('splitModeCustom')) $('splitModeCustom').onclick = () => { splitModal.mode = 'custom'; render(); };
+
+    document.querySelectorAll('[data-sm]').forEach(cb => {
+      cb.onchange = () => {
+        splitModal.members[cb.dataset.sm] = cb.checked;
+        render();
+      };
+    });
+    document.querySelectorAll('[data-sma]').forEach(inp => {
+      inp.oninput = () => {
+        splitModal.customAmts[inp.dataset.sma] = Number(inp.value) || 0;
+        // update display total
+        const allocatedSum = Object.values(splitModal.customAmts).reduce((a,v)=>a+(Number(v)||0),0);
+        const total = splitModal.totalAmt;
+        const valEl = document.querySelector('.split-total-val');
+        if (valEl) {
+          const curSym = getCurSym();
+          const ok = Math.abs(allocatedSum - total) < 1;
+          valEl.className = 'split-total-val ' + (ok ? 'ok' : 'err');
+          valEl.textContent = `${curSym}${fmt(Math.round(allocatedSum))} / ${curSym}${fmt(total)}`;
+        }
+      };
+    });
+    if ($('btnSaveSplit')) $('btnSaveSplit').onclick = () => {
+      // 儲存分攤設定
+      if (splitModal.mode === 'custom') {
+        const allocatedSum = Object.values(splitModal.customAmts).reduce((a,v)=>a+(Number(v)||0),0);
+        if (Math.abs(allocatedSum - splitModal.totalAmt) > 1) {
+          alert(`分攤金額加總（${allocatedSum}）與總金額（${splitModal.totalAmt}）不符，請調整！`);
+          return;
+        }
+      } else {
+        // 平均分給勾選的成員
+        const checkedMembers = Object.entries(splitModal.members).filter(([,v])=>v).map(([m])=>m);
+        const n = checkedMembers.length;
+        if (n === 0) { alert('請至少選一位成員'); return; }
+        const perPerson = splitModal.totalAmt / n;
+        splitModal.customAmts = {};
+        checkedMembers.forEach(m => { splitModal.customAmts[m] = perPerson; });
+      }
+      modal = null; render();
+    };
+  }
+}
+
+function openShare(tripId) {
+  shareUrl  = location.origin + location.pathname + '?join=' + tripId;
+  curTripId = tripId;
+  modal     = 'share';
+  render();
+}
+
+function closeModal() {
+  modal = null; editKey = null; render();
+}
+
+function readForm() {
+  const g = id => $(id) ? $(id).value : '';
+  F.name   = g('fName');
+  F.time   = g('fTime');
+  F.cost   = g('fCost');
+  F.desc   = g('fDesc');
+  F.mapUrl = g('fMap');
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  alert('✅ 已複製！');
+}
+
+init();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      // 每次載入都強制去伺服器檢查有沒有新版 sw.js
+      reg.update();
+
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          // 新 SW 安裝完畢，且目前有舊 SW 在控制頁面
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // 告訴新 SW 直接跳過等待，立刻接管
+            newWorker.postMessage({ type: 'SKIP_WAITING' });
+          }
+        });
+      });
+
+      // 當 SW 控制權切換（新版接管），自動重新載入頁面
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload();
+      });
+    }).catch(err => console.log('SW error:', err));
+  });
+}
+</script>
+</body>
+</html>
