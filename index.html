@@ -517,105 +517,117 @@ function doJoinTrip(tripId) {
 let leafletThumbMap = null;
 let leafletModalMap = null;
 
-function initLeafletThumb(items) {
-  const el = document.getElementById('leafletThumb');
-  if (!el || !window.L) return;
-  if (leafletThumbMap) { leafletThumbMap.remove(); leafletThumbMap = null; }
+// geocode 快取，避免重複請求
+const geocodeCache = {};
 
-  // 先用 Nominatim geocode 第一個景點當中心，其他的也 geocode
-  const geocodeAll = async () => {
-    const coords = [];
-    for (const it of items) {
-      const q = extractSearchQuery(it) || it.name;
-      try {
-        const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`, {headers:{'Accept-Language':'zh-TW,en'}});
-        const d = await r.json();
-        if (d[0]) coords.push({lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon), item: it, index: coords.length});
-        else coords.push(null);
-      } catch { coords.push(null); }
+async function geocodeItem(it, tripName) {
+  const q = extractSearchQuery(it) || it.name;
+  const cacheKey = q;
+  if (geocodeCache[cacheKey]) return geocodeCache[cacheKey];
+  try {
+    // 用行程名稱萃取城市/國家 context（例如「米蘭五日遊」→「米蘭」）
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&accept-language=zh-TW,en`,
+      {headers:{'User-Agent':'TravelPWA/1.0'}}
+    );
+    const d = await r.json();
+    if (d[0]) {
+      const result = {lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon)};
+      geocodeCache[cacheKey] = result;
+      return result;
     }
-    return coords;
-  };
-
-  // 先顯示 loading，然後 geocode
-  el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:12px;">📍 載入地圖中…</div>';
-
-  geocodeAll().then(coords => {
-    const valid = coords.filter(Boolean);
-    if (!valid.length) { el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:12px;">無法載入地圖</div>'; return; }
-    if (!document.getElementById('leafletThumb')) return;
-
-    leafletThumbMap = L.map('leafletThumb', {zoomControl:false, attributionControl:false, dragging:false, scrollWheelZoom:false, touchZoom:false, doubleClickZoom:false});
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18}).addTo(leafletThumbMap);
-
-    const bounds = [];
-    coords.forEach((c, i) => {
-      if (!c) return;
-      const col = pinColor(items[i].type);
-      const icon = L.divIcon({
-        className:'',
-        html:`<div style="width:22px;height:22px;border-radius:50%;background:${col};color:white;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${i+1}</div>`,
-        iconSize:[22,22], iconAnchor:[11,11]
-      });
-      L.marker([c.lat, c.lng], {icon}).addTo(leafletThumbMap);
-      bounds.push([c.lat, c.lng]);
-    });
-
-    if (bounds.length === 1) leafletThumbMap.setView(bounds[0], 14);
-    else leafletThumbMap.fitBounds(bounds, {padding:[20,20]});
-  });
+  } catch {}
+  return null;
 }
 
-function initLeafletModal(items) {
-  const el = document.getElementById('leafletModal');
+async function geocodeAll(items, tripName) {
+  const results = [];
+  for (let i = 0; i < items.length; i++) {
+    const c = await geocodeItem(items[i], tripName);
+    results.push(c); // 保留 null，維持 index 對應
+  }
+  return results;
+}
+
+function renderLeafletMap(mapId, items, tripName, opts) {
+  const el = document.getElementById(mapId);
   if (!el || !window.L) return;
-  if (leafletModalMap) { leafletModalMap.remove(); leafletModalMap = null; }
 
-  el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:12px;">📍 載入地圖中…</div>';
+  // 清掉舊地圖
+  if (opts.mapRef) { try { opts.mapRef.remove(); } catch {} }
 
-  const geocodeAll = async () => {
-    const coords = [];
-    for (const it of items) {
-      const q = extractSearchQuery(it) || it.name;
-      try {
-        const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`, {headers:{'Accept-Language':'zh-TW,en'}});
-        const d = await r.json();
-        if (d[0]) coords.push({lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon), item: it, index: coords.length});
-        else coords.push(null);
-      } catch { coords.push(null); }
+  el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px;">📍 載入地圖中…</div>';
+
+  geocodeAll(items, tripName).then(coords => {
+    if (!document.getElementById(mapId)) return;
+
+    const valid = coords.map((c,i) => c ? {c,i} : null).filter(Boolean);
+    if (!valid.length) {
+      el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:12px;">無法取得地點座標</div>';
+      return;
     }
-    return coords;
-  };
 
-  geocodeAll().then(coords => {
-    const valid = coords.filter(Boolean);
-    if (!valid.length) { el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:12px;">無法載入地圖</div>'; return; }
-    if (!document.getElementById('leafletModal')) return;
+    el.innerHTML = ''; // 清掉 loading 文字
+    const map = L.map(mapId, {
+      zoomControl: opts.zoomControl,
+      attributionControl: false,
+      dragging: opts.dragging,
+      scrollWheelZoom: opts.dragging,
+      touchZoom: opts.dragging,
+      doubleClickZoom: opts.dragging,
+    });
+    if (opts.setRef) opts.setRef(map);
 
-    leafletModalMap = L.map('leafletModal', {zoomControl:true, attributionControl:false});
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18}).addTo(leafletModalMap);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18}).addTo(map);
 
     const bounds = [];
     const latlngs = [];
-    coords.forEach((c, i) => {
-      if (!c) return;
+
+    valid.forEach(({c, i}) => {
       const col = pinColor(items[i].type);
+      const sz = opts.pinSize || 22;
+      const fs = opts.fontSize || 9;
       const icon = L.divIcon({
         className:'',
-        html:`<div style="width:28px;height:28px;border-radius:50%;background:${col};color:white;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);">${i+1}</div>`,
-        iconSize:[28,28], iconAnchor:[14,14]
+        html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${col};color:white;font-size:${fs}px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${i+1}</div>`,
+        iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]
       });
-      const marker = L.marker([c.lat, c.lng], {icon}).addTo(leafletModalMap);
-      marker.bindPopup(`<b>${items[i].name}</b>`);
+      const marker = L.marker([c.lat, c.lng], {icon}).addTo(map);
+      if (opts.popup) marker.bindPopup(`<b>${items[i].name}</b>`);
       bounds.push([c.lat, c.lng]);
       latlngs.push([c.lat, c.lng]);
     });
 
-    // 畫路線
-    if (latlngs.length > 1) L.polyline(latlngs, {color:'#007AFF', weight:2.5, opacity:0.7, dashArray:'6,6'}).addTo(leafletModalMap);
+    // 畫連線
+    if (opts.polyline && latlngs.length > 1) {
+      L.polyline(latlngs, {color:'#007AFF', weight:2.5, opacity:0.7, dashArray:'6,6'}).addTo(map);
+    }
 
-    if (bounds.length === 1) leafletModalMap.setView(bounds[0], 14);
-    else leafletModalMap.fitBounds(bounds, {padding:[30,30]});
+    const pad = opts.padding || [20,20];
+    if (bounds.length === 1) map.setView(bounds[0], 15);
+    else map.fitBounds(bounds, {padding: pad});
+  });
+}
+
+function initLeafletThumb(items, tripName) {
+  renderLeafletMap('leafletThumb', items, tripName, {
+    mapRef: leafletThumbMap,
+    setRef: m => { leafletThumbMap = m; },
+    zoomControl: false, dragging: false,
+    pinSize: 22, fontSize: 9,
+    popup: false, polyline: false,
+    padding: [15,15],
+  });
+}
+
+function initLeafletModal(items, tripName) {
+  renderLeafletMap('leafletModal', items, tripName, {
+    mapRef: leafletModalMap,
+    setRef: m => { leafletModalMap = m; },
+    zoomControl: true, dragging: true,
+    pinSize: 28, fontSize: 11,
+    popup: true, polyline: true,
+    padding: [30,30],
   });
 }
 
@@ -627,7 +639,7 @@ function render() {
     const trip = trips[curTripId];
     if (trip && document.getElementById('leafletThumb')) {
       const items = getItems(trip, trip.currentDay || 0).filter(it => it.name);
-      if (items.length) initLeafletThumb(items);
+      if (items.length) initLeafletThumb(items, trip.name || '');
     }
   }, 50);
 }
@@ -1334,7 +1346,7 @@ function buildModalItem() {
       <div style="display:flex;flex-direction:row;gap:12px;margin-bottom:16px;">
         <div style="flex:1;min-width:0;">
           <label class="f-lbl">時間</label>
-          <input class="f-inp" id="fTime" type="time" value="${F.time}" style="width:100%;" />
+          <input class="f-inp" id="fTime" type="text" placeholder="09:00" value="${esc(F.time)}" inputmode="numeric" style="width:100%;" />
         </div>
         <div style="flex:1;min-width:0;">
           <label class="f-lbl">費用 NT$</label>
@@ -1466,7 +1478,7 @@ function bindEvents() {
       // 初始化 modal Leaflet 地圖
       setTimeout(() => {
         const items = getItems(t, t.currentDay || 0).filter(it => it.name);
-        if (items.length) initLeafletModal(items);
+        if (items.length) initLeafletModal(items, t.name || '');
       }, 100);
     };
   }
