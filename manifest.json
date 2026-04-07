@@ -2,7 +2,7 @@
   "name": "旅遊行程規劃",
   "short_name": "行程規劃",
   "description": "雲端共享旅遊行程規劃 App",
-  "start_url": "/",
+  "start_url": "/travel-itinerary-pwa/",
   "display": "standalone",
   "background_color": "#F7F7F7",
   "theme_color": "#1A1A1A",
@@ -20,5 +20,6 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "scope": "/travel-itinerary-pwa/"
 }
