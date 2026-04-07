@@ -30,8 +30,9 @@ self.addEventListener('fetch', event => {
       url.includes('er-api.com') ||
       url.includes('frankfurter.app') ||
       url.includes('wikipedia.org') ||
-      url.includes('wikimedia.org')) {
-    event.respondWith(fetch(event.request));
+      url.includes('wikimedia.org') ||
+      url.includes('version.txt')) {
+    event.respondWith(fetch(event.request).catch(() => new Response('')));
     return;
   }
 

@@ -1863,24 +1863,41 @@ function fallbackCopy(text) {
 
 init();
 
+// 版本自動更新：每次開啟 app 檢查伺服器版本號，有新版自動 reload
+const APP_VERSION = '7';
+(function checkVersion() {
+  fetch('./version.txt?t=' + Date.now(), {cache: 'no-store'})
+    .then(r => r.text())
+    .then(v => {
+      const serverVer = v.trim();
+      const localVer = localStorage.getItem('app_version');
+      if (localVer && localVer !== serverVer) {
+        // 有新版！清快取後 reload
+        localStorage.setItem('app_version', serverVer);
+        if ('caches' in window) {
+          caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
+            .then(() => window.location.reload(true));
+        } else {
+          window.location.reload(true);
+        }
+      } else {
+        localStorage.setItem('app_version', serverVer);
+      }
+    }).catch(() => {});
+})();
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then(reg => {
-      // 每次載入都強制去伺服器檢查有沒有新版 sw.js
       reg.update();
-
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         newWorker.addEventListener('statechange', () => {
-          // 新 SW 安裝完畢，且目前有舊 SW 在控制頁面
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // 告訴新 SW 直接跳過等待，立刻接管
             newWorker.postMessage({ type: 'SKIP_WAITING' });
           }
         });
       });
-
-      // 當 SW 控制權切換（新版接管），自動重新載入頁面
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         window.location.reload();
       });
