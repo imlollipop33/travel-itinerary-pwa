@@ -1360,14 +1360,14 @@ function buildModalItem() {
         </div>
       </div>
       <div class="f-group"><label class="f-lbl">名稱</label><input class="f-inp" id="fName" type="text" placeholder="景點/餐廳/活動" value="${esc(F.name)}" /></div>
-      <div style="display:flex;flex-direction:row;gap:12px;margin-bottom:16px;">
+      <div style="display:flex;flex-direction:row;gap:12px;margin-bottom:16px;align-items:flex-end;">
         <div style="flex:1;min-width:0;">
           <label class="f-lbl">時間</label>
-          <input class="f-inp" id="fTime" type="text" placeholder="09:00" value="${esc(F.time)}" inputmode="numeric" style="width:100%;" />
+          <input class="f-inp" id="fTime" type="text" placeholder="09:00" value="${esc(F.time)}" inputmode="numeric" style="width:100%;height:46px;box-sizing:border-box;" />
         </div>
         <div style="flex:1;min-width:0;">
           <label class="f-lbl">費用 NT$</label>
-          <input class="f-inp" id="fCost" type="number" placeholder="0" value="${F.cost}" inputmode="numeric" style="width:100%;" />
+          <input class="f-inp" id="fCost" type="number" placeholder="0" value="${F.cost}" inputmode="numeric" style="width:100%;height:46px;box-sizing:border-box;" />
         </div>
       </div>
       <div class="f-group"><label class="f-lbl">備註</label><textarea class="f-ta" id="fDesc" placeholder="地址、開放時間…">${esc(F.desc)}</textarea></div>
