@@ -1,4 +1,4 @@
-const CACHE_NAME = 'travel-app-v5';
+const CACHE_NAME = 'travel-app-v6';
 
 self.addEventListener('install', event => {
   // 有新版就立刻接管，不等舊 SW 關閉
