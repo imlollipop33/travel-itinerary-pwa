@@ -10,6 +10,8 @@
   <title>旅遊行程規劃</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon-192.png?v=2" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     :root {
@@ -191,7 +193,8 @@
     .f-inp:focus, .f-ta:focus, .f-sel:focus { border-color:var(--text); background:white; }
     .f-ta { resize:none; height:68px; line-height:1.6; }
     .f-sel { appearance:none; cursor:pointer; }
-    .f-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .f-row { display:flex; flex-direction:row; gap:12px; align-items:flex-start; }
+    .f-row .f-group { flex:1; min-width:0; margin-bottom:0; }
     .t-chips { display:flex; gap:6px; flex-wrap:wrap; }
     .t-chip { border:1px solid var(--border2); background:var(--surface); border-radius:var(--r-sm); padding:6px 12px; font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; font-family:inherit; }
     .t-chip.on { background:var(--text); border-color:var(--text); color:white; }
@@ -510,9 +513,123 @@ function doJoinTrip(tripId) {
 }
 
 // ── 渲染 ──
+// Leaflet 地圖實例
+let leafletThumbMap = null;
+let leafletModalMap = null;
+
+function initLeafletThumb(items) {
+  const el = document.getElementById('leafletThumb');
+  if (!el || !window.L) return;
+  if (leafletThumbMap) { leafletThumbMap.remove(); leafletThumbMap = null; }
+
+  // 先用 Nominatim geocode 第一個景點當中心，其他的也 geocode
+  const geocodeAll = async () => {
+    const coords = [];
+    for (const it of items) {
+      const q = extractSearchQuery(it) || it.name;
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`, {headers:{'Accept-Language':'zh-TW,en'}});
+        const d = await r.json();
+        if (d[0]) coords.push({lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon), item: it, index: coords.length});
+        else coords.push(null);
+      } catch { coords.push(null); }
+    }
+    return coords;
+  };
+
+  // 先顯示 loading，然後 geocode
+  el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:12px;">📍 載入地圖中…</div>';
+
+  geocodeAll().then(coords => {
+    const valid = coords.filter(Boolean);
+    if (!valid.length) { el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:12px;">無法載入地圖</div>'; return; }
+    if (!document.getElementById('leafletThumb')) return;
+
+    leafletThumbMap = L.map('leafletThumb', {zoomControl:false, attributionControl:false, dragging:false, scrollWheelZoom:false, touchZoom:false, doubleClickZoom:false});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18}).addTo(leafletThumbMap);
+
+    const bounds = [];
+    coords.forEach((c, i) => {
+      if (!c) return;
+      const col = pinColor(items[i].type);
+      const icon = L.divIcon({
+        className:'',
+        html:`<div style="width:22px;height:22px;border-radius:50%;background:${col};color:white;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${i+1}</div>`,
+        iconSize:[22,22], iconAnchor:[11,11]
+      });
+      L.marker([c.lat, c.lng], {icon}).addTo(leafletThumbMap);
+      bounds.push([c.lat, c.lng]);
+    });
+
+    if (bounds.length === 1) leafletThumbMap.setView(bounds[0], 14);
+    else leafletThumbMap.fitBounds(bounds, {padding:[20,20]});
+  });
+}
+
+function initLeafletModal(items) {
+  const el = document.getElementById('leafletModal');
+  if (!el || !window.L) return;
+  if (leafletModalMap) { leafletModalMap.remove(); leafletModalMap = null; }
+
+  el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:12px;">📍 載入地圖中…</div>';
+
+  const geocodeAll = async () => {
+    const coords = [];
+    for (const it of items) {
+      const q = extractSearchQuery(it) || it.name;
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`, {headers:{'Accept-Language':'zh-TW,en'}});
+        const d = await r.json();
+        if (d[0]) coords.push({lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon), item: it, index: coords.length});
+        else coords.push(null);
+      } catch { coords.push(null); }
+    }
+    return coords;
+  };
+
+  geocodeAll().then(coords => {
+    const valid = coords.filter(Boolean);
+    if (!valid.length) { el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:12px;">無法載入地圖</div>'; return; }
+    if (!document.getElementById('leafletModal')) return;
+
+    leafletModalMap = L.map('leafletModal', {zoomControl:true, attributionControl:false});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18}).addTo(leafletModalMap);
+
+    const bounds = [];
+    const latlngs = [];
+    coords.forEach((c, i) => {
+      if (!c) return;
+      const col = pinColor(items[i].type);
+      const icon = L.divIcon({
+        className:'',
+        html:`<div style="width:28px;height:28px;border-radius:50%;background:${col};color:white;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);">${i+1}</div>`,
+        iconSize:[28,28], iconAnchor:[14,14]
+      });
+      const marker = L.marker([c.lat, c.lng], {icon}).addTo(leafletModalMap);
+      marker.bindPopup(`<b>${items[i].name}</b>`);
+      bounds.push([c.lat, c.lng]);
+      latlngs.push([c.lat, c.lng]);
+    });
+
+    // 畫路線
+    if (latlngs.length > 1) L.polyline(latlngs, {color:'#007AFF', weight:2.5, opacity:0.7, dashArray:'6,6'}).addTo(leafletModalMap);
+
+    if (bounds.length === 1) leafletModalMap.setView(bounds[0], 14);
+    else leafletModalMap.fitBounds(bounds, {padding:[30,30]});
+  });
+}
+
 function render() {
   $('app').innerHTML = buildMain() + (modal ? buildModal() : '');
   bindEvents();
+  // 初始化縮圖 Leaflet 地圖
+  setTimeout(() => {
+    const trip = trips[currentTripId];
+    if (trip && document.getElementById('leafletThumb')) {
+      const items = getItems(trip, trip.currentDay || 0).filter(it => it.name);
+      if (items.length) initLeafletThumb(items);
+    }
+  }, 50);
 }
 
 function buildMain() {
@@ -659,18 +776,13 @@ let mapTransportMode = false; // 是否在選點模式
 let mapSelA = null; // {index, item}
 let mapSelB = null; // {index, item}
 
-// 縮圖：Google Maps iframe + 彩色圖釘說明列
+// 縮圖：Leaflet (OpenStreetMap) + 真正彩色圖釘
 function buildMapThumb(t) {
   const curDay = t.currentDay || 0;
   const items  = getItems(t, curDay).filter(it => it.name);
   if (!items.length) return '';
 
-  // 用第一個景點/餐飲類當地圖中心，否則取第一個
-  const anchor = items.find(it => ['sight','food','shop'].includes(it.type)) || items[0];
-  const q = extractSearchQuery(anchor) || anchor.name;
-  const gmSrc = `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=14&output=embed&hl=zh-TW`;
-
-  // 圖釘說明列：數字=順序，顏色=類型，全部行程都顯示
+  // 圖釘說明列
   const dots = items.map((it, i) => {
     const col = pinColor(it.type);
     const label = it.name.length > 8 ? it.name.slice(0,8)+'…' : it.name;
@@ -680,23 +792,20 @@ function buildMapThumb(t) {
     </span>`;
   }).join('');
 
-  // 交通查詢模式下的 A→B 選擇列
-  const transportBar = mapTransportMode ? buildTransportPickerBar(items) : '';
-
   return `
   <div style="border-bottom:1px solid var(--border);" id="mapThumbWrap">
-    <!-- 地圖 iframe（不 overflow:hidden，讓底部說明列正常顯示） -->
     <div style="position:relative;">
-      <iframe id="mapThumbIframe" src="${gmSrc}" style="width:100%;height:130px;border:none;display:block;pointer-events:none;" loading="lazy"></iframe>
+      <!-- Leaflet 縮圖地圖 -->
+      <div id="leafletThumb" style="width:100%;height:150px;background:#e8f0e8;"></div>
 
-      <!-- 交通查詢模式提示（只在選點模式顯示） -->
+      <!-- 交通查詢模式提示 -->
       ${mapTransportMode ? `
       <div style="position:absolute;top:8px;left:8px;right:48px;background:rgba(0,0,0,0.7);color:white;font-size:9px;font-weight:600;padding:4px 10px;border-radius:10px;z-index:20;text-align:center;">
         ${!mapSelA ? '👇 在下方點選出發地 A' : '👇 在下方點選目的地 B'}
       </div>
       ` : ''}
 
-      <!-- 展開按鈕（右上角 icon） -->
+      <!-- 展開按鈕 -->
       <button id="btnOpenMap" style="position:absolute;top:8px;right:8px;width:32px;height:32px;background:rgba(255,255,255,0.92);border:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.15);padding:5px;z-index:20;">
         <svg viewBox="0 0 100 100" fill="none" style="width:100%;height:100%;">
           <path d="M10 10 H55 M75 10 H90 V25 M90 45 V90 H10 V10" stroke="#1a1a1a" stroke-width="13" stroke-linecap="square" fill="none"/>
@@ -706,7 +815,7 @@ function buildMapThumb(t) {
       </button>
     </div>
 
-    <!-- 圖釘說明列（在 iframe 下方，始終顯示） -->
+    <!-- 圖釘說明列 -->
     <div style="background:white;border-top:1px solid var(--border);padding:6px 10px;display:flex;align-items:center;overflow-x:auto;gap:0;-webkit-overflow-scrolling:touch;">
       ${dots}
     </div>
@@ -765,10 +874,13 @@ function buildMapModal(t) {
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(names[0]||items[0].name)}`
     : `https://www.google.com/maps/dir/${names.map(n=>encodeURIComponent(n)).join('/')}`;
 
-  // embed：用第一個景點/餐飲類當中心
-  const anchor = items.find(it => ['sight','food','shop'].includes(it.type)) || items[0];
-  const q = extractSearchQuery(anchor) || anchor.name;
-  const gmSrc = `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=14&output=embed&hl=zh-TW`;
+  // Google Maps 路線 embed（多景點串成路線）
+  const gmModalSrc = names.length <= 1
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(names[0]||items[0].name)}&output=embed&hl=zh-TW`
+    : `https://www.google.com/maps/embed/v1/directions?key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY&origin=${encodeURIComponent(names[0])}&destination=${encodeURIComponent(names[names.length-1])}&waypoints=${names.slice(1,-1).map(n=>encodeURIComponent(n)).join('|')}&language=zh-TW`;
+
+  // fallback：如果多景點直接用搜尋第一個
+  const gmSrcFallback = `https://maps.google.com/maps?q=${encodeURIComponent(names[0]||items[0].name)}&output=embed&hl=zh-TW`;
 
   return `
   <div class="map-modal-overlay" id="mapModalOverlay">
@@ -777,7 +889,8 @@ function buildMapModal(t) {
         <div class="map-modal-title">🗺 ${esc(dayLabel)}</div>
         <button class="map-modal-close" id="btnCloseMap">✕</button>
       </div>
-      <iframe src="${gmSrc}" style="width:100%;height:320px;flex-shrink:0;border:none;display:block;" loading="lazy" allowfullscreen></iframe>
+      <!-- 放大地圖：Leaflet with pins -->
+      <div id="leafletModal" style="width:100%;height:320px;flex-shrink:0;display:block;background:#e8f0e8;"></div>
       <div class="map-modal-list">
         ${items.map((it, i) => {
           const col = pinColor(it.type);
@@ -1342,8 +1455,13 @@ function bindEvents() {
       document.body.appendChild(div.firstElementChild);
       const overlay = document.getElementById('mapModalOverlay');
       const closeBtn = document.getElementById('btnCloseMap');
-      if (closeBtn) closeBtn.onclick = () => overlay && overlay.remove();
-      if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+      if (closeBtn) closeBtn.onclick = () => { overlay && overlay.remove(); if (leafletModalMap) { leafletModalMap.remove(); leafletModalMap = null; } };
+      if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) { overlay.remove(); if (leafletModalMap) { leafletModalMap.remove(); leafletModalMap = null; } } });
+      // 初始化 modal Leaflet 地圖
+      setTimeout(() => {
+        const items = getItems(t, t.currentDay || 0).filter(it => it.name);
+        if (items.length) initLeafletModal(items);
+      }, 100);
     };
   }
 
