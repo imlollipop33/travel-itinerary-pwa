@@ -624,7 +624,7 @@ function render() {
   bindEvents();
   // 初始化縮圖 Leaflet 地圖
   setTimeout(() => {
-    const trip = trips[currentTripId];
+    const trip = trips[curTripId];
     if (trip && document.getElementById('leafletThumb')) {
       const items = getItems(trip, trip.currentDay || 0).filter(it => it.name);
       if (items.length) initLeafletThumb(items);
@@ -1810,7 +1810,7 @@ init();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(reg => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
       // 每次載入都強制去伺服器檢查有沒有新版 sw.js
       reg.update();
 
