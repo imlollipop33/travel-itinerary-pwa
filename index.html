@@ -521,22 +521,39 @@ let leafletModalMap = null;
 const geocodeCache = {};
 
 async function geocodeItem(it, tripName) {
-  const q = extractSearchQuery(it) || it.name;
-  const cacheKey = q;
+  const rawQ = extractSearchQuery(it) || it.name;
+  const cacheKey = rawQ;
   if (geocodeCache[cacheKey]) return geocodeCache[cacheKey];
-  try {
-    // 用行程名稱萃取城市/國家 context（例如「米蘭五日遊」→「米蘭」）
-    const r = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&accept-language=zh-TW,en`,
-      {headers:{'User-Agent':'TravelPWA/1.0'}}
-    );
-    const d = await r.json();
-    if (d[0]) {
-      const result = {lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon)};
-      geocodeCache[cacheKey] = result;
-      return result;
-    }
-  } catch {}
+
+  // 試多個搜尋策略，直到找到為止
+  const queries = [rawQ];
+
+  // 如果有英文部分就再加上行程名稱（當城市context）
+  if (tripName) queries.push(rawQ + ', ' + tripName);
+
+  // 如果名稱含中文+英文，只取英文部分再試
+  const enOnly = (rawQ.match(/[A-Za-z][A-Za-z0-9\s\-\'\.,]+/g)||[]).join(' ').trim();
+  if (enOnly.length > 3 && enOnly !== rawQ) queries.push(enOnly);
+  if (enOnly.length > 3 && tripName) queries.push(enOnly + ', ' + tripName);
+
+  // 機場代碼處理 (e.g. MXP → Malpensa Airport)
+  const iataMatch = rawQ.match(/\b([A-Z]{3})\b/);
+  if (iataMatch) queries.push(iataMatch[1] + ' airport');
+
+  for (const q of queries) {
+    try {
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&accept-language=zh-TW,en`,
+        {headers:{'User-Agent':'TravelPWA/1.0'}}
+      );
+      const d = await r.json();
+      if (d[0]) {
+        const result = {lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon)};
+        geocodeCache[cacheKey] = result;
+        return result;
+      }
+    } catch {}
+  }
   return null;
 }
 
