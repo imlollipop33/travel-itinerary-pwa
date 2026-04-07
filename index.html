@@ -1331,9 +1331,15 @@ function buildModalItem() {
         </div>
       </div>
       <div class="f-group"><label class="f-lbl">名稱</label><input class="f-inp" id="fName" type="text" placeholder="景點/餐廳/活動" value="${esc(F.name)}" /></div>
-      <div class="f-row">
-        <div class="f-group"><label class="f-lbl">時間</label><input class="f-inp" id="fTime" type="time" value="${F.time}" /></div>
-        <div class="f-group"><label class="f-lbl">費用 NT$</label><input class="f-inp" id="fCost" type="number" placeholder="0" value="${F.cost}" inputmode="numeric" /></div>
+      <div style="display:flex;flex-direction:row;gap:12px;margin-bottom:16px;">
+        <div style="flex:1;min-width:0;">
+          <label class="f-lbl">時間</label>
+          <input class="f-inp" id="fTime" type="time" value="${F.time}" style="width:100%;" />
+        </div>
+        <div style="flex:1;min-width:0;">
+          <label class="f-lbl">費用 NT$</label>
+          <input class="f-inp" id="fCost" type="number" placeholder="0" value="${F.cost}" inputmode="numeric" style="width:100%;" />
+        </div>
       </div>
       <div class="f-group"><label class="f-lbl">備註</label><textarea class="f-ta" id="fDesc" placeholder="地址、開放時間…">${esc(F.desc)}</textarea></div>
       <div class="f-group"><label class="f-lbl">地圖連結</label><input class="f-inp" id="fMap" type="url" placeholder="https://maps.google.com/…" value="${esc(F.mapUrl)}" /></div>
