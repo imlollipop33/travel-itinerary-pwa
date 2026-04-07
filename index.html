@@ -566,12 +566,18 @@ async function geocodeAll(items, tripName) {
   return results;
 }
 
-function renderLeafletMap(mapId, items, tripName, opts) {
+// markers 快取供 modal 點擊跳轉用
+let leafletModalMarkers = [];
+
+function buildLeafletMap(mapId, items, tripName, opts) {
   const el = document.getElementById(mapId);
   if (!el || !window.L) return;
 
-  // 清掉舊地圖
-  if (opts.mapRef) { try { opts.mapRef.remove(); } catch {} }
+  // 清掉舊地圖實例
+  const oldMap = opts.isModal ? leafletModalMap : leafletThumbMap;
+  if (oldMap) { try { oldMap.remove(); } catch {} }
+  if (opts.isModal) { leafletModalMap = null; leafletModalMarkers = []; }
+  else { leafletThumbMap = null; }
 
   el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px;">📍 載入地圖中…</div>';
 
@@ -580,78 +586,99 @@ function renderLeafletMap(mapId, items, tripName, opts) {
 
     const valid = coords.map((c,i) => c ? {c,i} : null).filter(Boolean);
     if (!valid.length) {
-      el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:12px;">無法取得地點座標</div>';
+      el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:12px;">📍 無法取得地點座標</div>';
       return;
     }
 
-    el.innerHTML = ''; // 清掉 loading 文字
+    el.innerHTML = '';
     const map = L.map(mapId, {
-      zoomControl: opts.zoomControl,
+      zoomControl: !!opts.isModal,
       attributionControl: false,
-      dragging: opts.dragging,
-      scrollWheelZoom: opts.dragging,
-      touchZoom: opts.dragging,
-      doubleClickZoom: opts.dragging,
+      dragging: !!opts.isModal,
+      scrollWheelZoom: !!opts.isModal,
+      touchZoom: !!opts.isModal,
+      doubleClickZoom: !!opts.isModal,
+      tap: true, // iOS tap fix
     });
-    if (opts.setRef) opts.setRef(map);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18}).addTo(map);
+    if (opts.isModal) leafletModalMap = map;
+    else leafletThumbMap = map;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      crossOrigin: true,
+    }).addTo(map);
 
     const bounds = [];
     const latlngs = [];
+    const markers = [];
 
     valid.forEach(({c, i}) => {
       const col = pinColor(items[i].type);
-      const sz = opts.pinSize || 22;
-      const fs = opts.fontSize || 9;
+      const sz = opts.isModal ? 28 : 22;
+      const fs = opts.isModal ? 11 : 9;
       const icon = L.divIcon({
-        className:'',
-        html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${col};color:white;font-size:${fs}px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${i+1}</div>`,
-        iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]
+        className: '',
+        html: `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${col};color:white;font-size:${fs}px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);">${i+1}</div>`,
+        iconSize: [sz, sz], iconAnchor: [sz/2, sz/2]
       });
       const marker = L.marker([c.lat, c.lng], {icon}).addTo(map);
-      if (opts.popup) marker.bindPopup(`<b>${items[i].name}</b>`);
+      if (opts.isModal) {
+        marker.bindPopup(`<b style="font-size:13px">${items[i].name}</b>`, {maxWidth: 200});
+      }
+      markers[i] = {marker, lat: c.lat, lng: c.lng};
       bounds.push([c.lat, c.lng]);
       latlngs.push([c.lat, c.lng]);
     });
 
-    // 畫連線
-    if (opts.polyline && latlngs.length > 1) {
-      L.polyline(latlngs, {color:'#007AFF', weight:2.5, opacity:0.7, dashArray:'6,6'}).addTo(map);
+    if (opts.isModal) {
+      leafletModalMarkers = markers;
+      // 畫路線連線
+      if (latlngs.length > 1) {
+        L.polyline(latlngs, {color:'#007AFF', weight:2.5, opacity:0.7, dashArray:'6,6'}).addTo(map);
+      }
     }
 
-    const pad = opts.padding || [20,20];
+    const pad = opts.isModal ? [30,30] : [15,15];
     if (bounds.length === 1) map.setView(bounds[0], 15);
     else map.fitBounds(bounds, {padding: pad});
+
+    // iOS Safari 修復：強制重算尺寸
+    setTimeout(() => {
+      map.invalidateSize();
+      if (bounds.length === 1) map.setView(bounds[0], 15);
+      else map.fitBounds(bounds, {padding: pad});
+    }, 300);
   });
 }
 
 function initLeafletThumb(items, tripName) {
-  renderLeafletMap('leafletThumb', items, tripName, {
-    mapRef: leafletThumbMap,
-    setRef: m => { leafletThumbMap = m; },
-    zoomControl: false, dragging: false,
-    pinSize: 22, fontSize: 9,
-    popup: false, polyline: false,
-    padding: [15,15],
-  });
+  buildLeafletMap('leafletThumb', items, tripName, {isModal: false});
 }
 
 function initLeafletModal(items, tripName) {
-  renderLeafletMap('leafletModal', items, tripName, {
-    mapRef: leafletModalMap,
-    setRef: m => { leafletModalMap = m; },
-    zoomControl: true, dragging: true,
-    pinSize: 28, fontSize: 11,
-    popup: true, polyline: true,
-    padding: [30,30],
-  });
+  buildLeafletMap('leafletModal', items, tripName, {isModal: true});
+}
+
+// 點擊景點清單 → 地圖飛到該位置
+function flyToMarker(index) {
+  const m = leafletModalMarkers[index];
+  if (!m || !leafletModalMap) return;
+  leafletModalMap.flyTo([m.lat, m.lng], 16, {duration: 0.8});
+  setTimeout(() => m.marker.openPopup(), 900);
 }
 
 function render() {
   $('app').innerHTML = buildMain() + (modal ? buildModal() : '');
   bindEvents();
-  // 初始化放大地圖（只在 modal 開啟時呼叫）
+  // 初始化縮圖 Leaflet
+  setTimeout(() => {
+    const trip = trips[curTripId];
+    if (trip && document.getElementById('leafletThumb')) {
+      const items = getItems(trip, trip.currentDay || 0).filter(it => it.name);
+      if (items.length) initLeafletThumb(items, trip.name || '');
+    }
+  }, 100);
 }
 
 function buildMain() {
@@ -814,16 +841,11 @@ function buildMapThumb(t) {
     </span>`;
   }).join('');
 
-  // 縮圖用 Google Maps embed（穩定，手機相容）
-  const anchor = items.find(it => ['sight','food','shop'].includes(it.type)) || items[0];
-  const q = extractSearchQuery(anchor) || anchor.name;
-  const gmSrc = `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=14&output=embed&hl=zh-TW`;
-
   return `
   <div style="border-bottom:1px solid var(--border);" id="mapThumbWrap">
     <div style="position:relative;">
-      <!-- 縮圖：Google Maps iframe（穩定） -->
-      <iframe src="${gmSrc}" style="width:100%;height:150px;border:none;display:block;pointer-events:none;" loading="lazy"></iframe>
+      <!-- 縮圖：Leaflet 彩色圖釘 -->
+      <div id="leafletThumb" style="width:100%;height:150px;background:#eef3ee;"></div>
 
       <!-- 交通查詢模式提示 -->
       ${mapTransportMode ? `
@@ -1489,6 +1511,12 @@ function bindEvents() {
         const items = getItems(t, t.currentDay || 0).filter(it => it.name);
         if (items.length) initLeafletModal(items, t.name || '');
       }, 100);
+
+      // 點擊景點清單 → 飛到地圖位置
+      document.querySelectorAll('[data-modal-item]').forEach(el => {
+        el.style.cursor = 'pointer';
+        el.onclick = () => flyToMarker(parseInt(el.dataset.modalItem));
+      });
     };
   }
 
