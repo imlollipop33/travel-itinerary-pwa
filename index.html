@@ -1381,7 +1381,15 @@ function buildModalItem() {
       <div style="display:flex;flex-direction:row;gap:12px;margin-bottom:16px;align-items:flex-end;">
         <div style="flex:1;min-width:0;">
           <label class="f-lbl">時間</label>
-          <input class="f-inp" id="fTime" type="text" placeholder="09:00" value="${esc(F.time)}" inputmode="numeric" style="width:100%;height:46px;box-sizing:border-box;" />
+          <div style="display:flex;align-items:center;gap:4px;height:46px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-md);padding:0 10px;box-sizing:border-box;">
+            <select id="fTimeH" style="flex:1;border:none;background:transparent;font-size:15px;font-weight:600;color:var(--text);font-family:inherit;outline:none;appearance:none;text-align:center;cursor:pointer;">
+              ${Array.from({length:24},(_,i)=>i).map(h=>`<option value="${String(h).padStart(2,'0')}" ${String(h).padStart(2,'0')===(F.time||'09:00').split(':')[0]?'selected':''}>${String(h).padStart(2,'0')}</option>`).join('')}
+            </select>
+            <span style="font-size:16px;font-weight:700;color:var(--text2);">:</span>
+            <select id="fTimeM" style="flex:1;border:none;background:transparent;font-size:15px;font-weight:600;color:var(--text);font-family:inherit;outline:none;appearance:none;text-align:center;cursor:pointer;">
+              ${Array.from({length:60},(_,i)=>i).map(m=>`<option value="${String(m).padStart(2,'0')}" ${String(m).padStart(2,'0')===(F.time||'09:00').split(':')[1]?'selected':''}>${String(m).padStart(2,'0')}</option>`).join('')}
+            </select>
+          </div>
         </div>
         <div style="flex:1;min-width:0;">
           <label class="f-lbl">費用 NT$</label>
@@ -1845,7 +1853,9 @@ function closeModal() {
 function readForm() {
   const g = id => $(id) ? $(id).value : '';
   F.name   = g('fName');
-  F.time   = g('fTime');
+  const fH = document.getElementById('fTimeH');
+  const fM = document.getElementById('fTimeM');
+  F.time = (fH && fM) ? (fH.value + ':' + fM.value) : g('fTime');
   F.cost   = g('fCost');
   F.desc   = g('fDesc');
   F.mapUrl = g('fMap');
